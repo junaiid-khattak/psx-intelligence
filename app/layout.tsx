@@ -8,7 +8,7 @@ import "./globals.css"
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans",
 })
 
 export const metadata: Metadata = {
@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${inter.variable}`}>
+    <html lang="en" className={inter.variable}>
+      <body className="font-sans antialiased">
         <Providers>
           <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
         </Providers>
