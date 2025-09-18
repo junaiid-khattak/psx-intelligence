@@ -1,6 +1,14 @@
 import { z } from "zod"
 import { publicProcedure, router } from "../trpc"
 
+// Types for KSE100 API response
+type KSE100DataPoint = [number, number, number] // [timestamp, price, volume]
+type KSE100Response = {
+  status: number
+  message: string
+  data: KSE100DataPoint[]
+}
+
 // Mock PSX stock data
 const mockStocks = [
   { ticker: "UBL", name: "United Bank Limited", price: 145.5, change: 2.3, volume: 1250000 },
@@ -42,6 +50,41 @@ export const appRouter = router({
     return {
       signal: signals[Math.floor(Math.random() * signals.length)],
       confidence: Math.floor(Math.random() * 40) + 60, // 60-100%
+    }
+  }),
+
+  getKSE100Data: publicProcedure.query(async () => {
+    try {
+      const response = await fetch('https://dps.psx.com.pk/timeseries/int/KSE100')
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch KSE100 data: ${response.status} ${response.statusText}`)
+      }
+
+      const data: KSE100Response = await response.json()
+      
+      if (data.status !== 1) {
+        throw new Error(`API returned error: ${data.message}`)
+      }
+
+      // Transform the data to a more usable format and limit to last 50 points for performance
+      const transformedData = data.data
+        .slice(-50) // Only take the last 50 data points
+        .map(([timestamp, price, volume]) => ({
+          timestamp: new Date(timestamp * 1000), // Convert Unix timestamp to Date
+          price,
+          volume,
+        }))
+
+      return {
+        success: true,
+        data: transformedData,
+        lastUpdated: new Date(),
+        totalPoints: transformedData.length,
+      }
+    } catch (error) {
+      console.error('Error fetching KSE100 data:', error)
+      throw new Error(`Failed to fetch KSE100 data: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }),
 })
