@@ -8,6 +8,7 @@ import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Eye, EyeOff } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export function SignUpForm() {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,12 +34,44 @@ export function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Simulate account creation
-    setTimeout(() => {
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
       setIsLoading(false)
-      router.push("/dashboard")
-    }, 2000)
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
+          data: {
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+          },
+        },
+      })
+
+      if (signUpError) throw signUpError
+
+      router.push("/auth/signup-success")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "An error occurred during signup")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -134,6 +168,8 @@ export function SignUpForm() {
           </Button>
         </div>
       </div>
+
+      {error && <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3">{error}</div>}
 
       <div className="flex items-start space-x-2">
         <input
