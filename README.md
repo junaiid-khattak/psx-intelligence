@@ -19,6 +19,8 @@ A Bloomberg-lite application for the Pakistan Stock Exchange (PSX) providing pro
 - **UI Components**: Radix UI + shadcn/ui
 - **State Management**: TanStack Query (React Query)
 - **API**: tRPC for type-safe APIs
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
 - **Analytics**: Vercel Analytics
 - **Charts**: Recharts
 - **Icons**: Lucide React
@@ -30,6 +32,7 @@ Before running this project locally, make sure you have:
 - **Node.js** 18.0.0 or higher
 - **npm** 8.0.0 or higher (or **yarn**/**pnpm** as alternatives)
 - **Git** for version control
+- **Supabase Account**: Sign up at [Supabase](https://supabase.com/) to get your credentials
 
 ## Getting Started
 
@@ -61,16 +64,27 @@ cp .env.example .env.local
 Add your environment variables:
 
 \`\`\`env
-# Database (if using)
-DATABASE_URL="your-database-url"
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL="your-supabase-project-url"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 
-# Authentication (if using)
-NEXTAUTH_SECRET="your-nextauth-secret"
-NEXTAUTH_URL="http://localhost:3000"
+# Development redirect URL for Supabase auth
+NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL="http://localhost:3000/dashboard"
+
+# Database (PostgreSQL via Supabase)
+DATABASE_URL="your-database-url"
 
 # API Keys (add as needed)
 PSX_API_KEY="your-psx-api-key"
 \`\`\`
+
+**To get your Supabase credentials:**
+1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
+2. Select your project
+3. Go to Settings > API
+4. Copy the Project URL and anon/public key
+5. For the service role key, copy it from the same API settings page
 
 ### 4. Run the Development Server
 
@@ -113,9 +127,15 @@ psx-intelligence/
 │   └── theme-provider.tsx # Theme provider
 ├── hooks/                # Custom React hooks
 ├── lib/                  # Utility functions
+│   └── supabase/         # Supabase client configuration
+│       ├── client.ts     # Browser client
+│       ├── server.ts     # Server client
+│       └── middleware.ts # Auth middleware
 ├── public/               # Static assets
+├── scripts/              # Database scripts
 ├── styles/               # Additional styles
-└── types/                # TypeScript type definitions
+├── types/                # TypeScript type definitions
+└── middleware.ts         # Next.js middleware
 \`\`\`
 
 ## Available Scripts
@@ -172,9 +192,11 @@ The application can be deployed to any platform that supports Next.js:
 
 | Variable | Description | Required |
 |----------|-------------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Yes |
+| `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` | Development auth redirect URL | No |
 | `DATABASE_URL` | Database connection string | No |
-| `NEXTAUTH_SECRET` | NextAuth.js secret key | No |
-| `NEXTAUTH_URL` | Application URL | No |
 | `PSX_API_KEY` | PSX API access key | No |
 
 ## Contributing
@@ -194,15 +216,20 @@ The application can be deployed to any platform that supports Next.js:
 - Check that `globals.css` is imported in `layout.tsx`
 - Verify PostCSS configuration
 
+**Supabase connection issues:**
+- Verify all Supabase environment variables are set correctly
+- Check that your Supabase project is active
+- Ensure Row Level Security (RLS) policies are properly configured
+
+**Authentication not working:**
+- Check that `middleware.ts` is properly configured
+- Verify email confirmation is enabled in Supabase Auth settings
+- Ensure redirect URLs are configured in Supabase Auth settings
+
 **Build errors:**
 - Run `npm run type-check` to identify TypeScript issues
 - Check for missing dependencies
 - Ensure all environment variables are set
-
-**Development server issues:**
-- Clear Next.js cache: `rm -rf .next`
-- Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-- Check port availability (default: 3000)
 
 ### Getting Help
 
@@ -220,3 +247,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - UI components from [shadcn/ui](https://ui.shadcn.com)
 - Icons from [Lucide](https://lucide.dev)
 - Styled with [Tailwind CSS](https://tailwindcss.com)
+- Supabase for database and authentication
