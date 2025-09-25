@@ -9,13 +9,17 @@ export class CacheInvalidationManager {
   private eventSource: EventSource | null = null
   private trpcUtils: any = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
+  private maxReconnectAttempts = 10
   private reconnectDelay = 1000
+  private maxReconnectDelay = 30000 // Cap at 30 seconds
+  private isConnected = false
+  private reconnectTimer: NodeJS.Timeout | null = null
 
   constructor() {
     // Initialize in browser only
     if (typeof window !== "undefined") {
       this.connect()
+      this.startHealthCheck()
     }
   }
 
@@ -25,11 +29,17 @@ export class CacheInvalidationManager {
 
   private connect() {
     try {
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer)
+        this.reconnectTimer = null
+      }
+
       this.eventSource = new EventSource("/api/cache/events")
 
       this.eventSource.onopen = () => {
         console.log("[v0] Cache invalidation SSE connected")
         this.reconnectAttempts = 0
+        this.isConnected = true
       }
 
       this.eventSource.onmessage = (event) => {
@@ -43,11 +53,13 @@ export class CacheInvalidationManager {
 
       this.eventSource.onerror = () => {
         console.log("[v0] Cache invalidation SSE error, attempting reconnect...")
+        this.isConnected = false
         this.eventSource?.close()
         this.reconnect()
       }
     } catch (error) {
       console.error("[v0] Failed to connect to cache invalidation SSE:", error)
+      this.isConnected = false
       this.reconnect()
     }
   }
@@ -55,15 +67,42 @@ export class CacheInvalidationManager {
   private reconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+      const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay)
 
-      setTimeout(() => {
+      this.reconnectTimer = setTimeout(() => {
         console.log(`[v0] Reconnecting to SSE (attempt ${this.reconnectAttempts})...`)
         this.connect()
       }, delay)
     } else {
       console.error("[v0] Max reconnection attempts reached for cache invalidation SSE")
+      this.schedulePeriodicRetry()
     }
+  }
+
+  private schedulePeriodicRetry() {
+    // Wait 5 minutes before trying again
+    this.reconnectTimer = setTimeout(
+      () => {
+        console.log("[v0] Attempting periodic SSE reconnection...")
+        this.reconnectAttempts = 0 // Reset attempts for periodic retry
+        this.connect()
+      },
+      5 * 60 * 1000,
+    ) // 5 minutes
+  }
+
+  private startHealthCheck() {
+    setInterval(
+      () => {
+        // If we've been disconnected for more than 2 minutes, reset attempts
+        if (!this.isConnected && this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.log("[v0] Health check: Resetting SSE connection attempts")
+          this.reconnectAttempts = 0
+          this.connect()
+        }
+      },
+      2 * 60 * 1000,
+    ) // Check every 2 minutes
   }
 
   private handleCacheInvalidation(event: CacheInvalidationEvent) {
@@ -161,7 +200,12 @@ export class CacheInvalidationManager {
     if (this.eventSource) {
       this.eventSource.close()
       this.eventSource = null
+      this.isConnected = false
       console.log("[v0] Disconnected from cache invalidation SSE")
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
     }
   }
 }
