@@ -1,14 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// API endpoint for AWS Lambda to trigger cache invalidation
 export async function POST(request: NextRequest) {
+  console.log("[v0] Cache invalidate POST request received")
+
   try {
     const body = await request.json()
     const { sections, tickers, apiKey } = body
 
-    // Basic API key validation (you should use a proper secret)
+    console.log("[v0] Request body:", { sections, tickers, hasApiKey: !!apiKey })
+
+    // Basic API key validation
     const expectedApiKey = process.env.CACHE_INVALIDATION_API_KEY
-    if (!expectedApiKey || apiKey !== expectedApiKey) {
+    if (!expectedApiKey) {
+      console.log("[v0] No CACHE_INVALIDATION_API_KEY environment variable set")
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
+
+    if (apiKey !== expectedApiKey) {
+      console.log("[v0] Invalid API key provided")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -39,12 +48,19 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("[v0] Cache invalidation error:", error)
-    return NextResponse.json({ error: "Failed to process cache invalidation" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to process cache invalidation",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
 
 // GET endpoint to check recent invalidation events
 export async function GET() {
+  console.log("[v0] Cache invalidate GET request received")
   const events = global.cacheInvalidationEvents || []
-  return NextResponse.json({ events })
+  return NextResponse.json({ events, count: events.length })
 }
