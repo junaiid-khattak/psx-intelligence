@@ -57,7 +57,6 @@ async function createSupabaseFetcher() {
 
   return {
     fetch: async (endpoint: string) => {
-      console .log("endpoint", endpoint);
       const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
         headers: {
           apikey: serviceKey,
@@ -151,7 +150,6 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       volatilityLeaders,
     }
   } catch (error) {
-    console.error("Error fetching dashboard sections:", error)
     // Return mock data for development/testing
     return getMockDashboardSections()
   }
