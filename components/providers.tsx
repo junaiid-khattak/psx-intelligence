@@ -11,9 +11,22 @@ import { cacheManager } from "../lib/cache-invalidation"
 
 export const trpc = createTRPCReact<AppRouter>()
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const utils = trpc.useUtils() // Moved to top level
+function CacheManagerSetup() {
+  const utils = trpc.useUtils()
 
+  useEffect(() => {
+    cacheManager.setTrpcUtils(utils)
+
+    // Cleanup on unmount
+    return () => {
+      cacheManager.disconnect()
+    }
+  }, [utils])
+
+  return null
+}
+
+export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -46,18 +59,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }),
   )
 
-  useEffect(() => {
-    cacheManager.setTrpcUtils(utils)
-
-    // Cleanup on unmount
-    return () => {
-      cacheManager.disconnect()
-    }
-  }, [utils])
-
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <CacheManagerSetup />
+        {children}
+      </QueryClientProvider>
     </trpc.Provider>
   )
 }
