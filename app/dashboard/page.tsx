@@ -1,115 +1,356 @@
-"use client"
-
+import { Suspense } from "react"
+import Link from "next/link"
 import { DashboardLayout } from "../../components/dashboard-layout"
-import { WatchlistTable } from "../../components/watchlist-table"
-import { trpc } from "../../lib/trpc"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { MetricRow } from "@/components/psx/metric-row"
+import { CardSkeleton } from "@/components/psx/loading-skeleton"
+import { fetchDashboardSections } from "@/lib/psx"
+import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
 
-export default function DashboardPage() {
-  
-  const { data: kse100Data, isLoading: kse100Loading, error: kse100Error } = trpc.getKSE100Data.useQuery()
-  
-  // Show error state if there's an error
-  if (kse100Error) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="text-red-600 text-lg font-semibold mb-2">Error Loading Data</div>
-            <div className="text-muted-foreground">{kse100Error.message}</div>
-          </div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-  console.log('kse100Data', kse100Data);
+async function DashboardContent() {
+  const sections = await fetchDashboardSections()
 
-  // Calculate current price and change
-  const currentPrice = kse100Data?.json?.data?.[0]?.price
-  const previousPrice = kse100Data?.json?.data?.[1]?.price
-  const change = currentPrice && previousPrice ? currentPrice - previousPrice : 0
-  const changePercent = previousPrice ? (change / previousPrice) * 100 : 0
-  const formattedPrice = currentPrice ? currentPrice.toLocaleString() : "Loading..."
-  const formattedChange = changePercent >= 0 ? `+${changePercent.toFixed(2)}%` : `${changePercent.toFixed(2)}%`
-  
-  console.log('currentPrice', currentPrice);
-  console.log('previousPrice', previousPrice);
-  console.log('change', change);
-  console.log('changePercent', changePercent);
-
-
-
-  console.log('formattedChange', formattedChange);
+  // Get the latest trading date from the first section
+  const tradingDate = sections.topGainers[0]?.trading_date
+    ? new Date(sections.topGainers[0].trading_date).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "Today"
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Market Overview</h1>
-          <div className="text-sm text-muted-foreground">
-            Last updated: {kse100Data?.lastUpdated ? kse100Data.lastUpdated.toLocaleTimeString() : new Date().toLocaleTimeString()}
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Market Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Real-time PSX market intelligence</p>
         </div>
-
-        {/* Market Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">KSE-100 Index</div>
-            <div className="text-2xl font-bold text-foreground">{formattedPrice}</div>
-            <div className={`text-sm ${changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {kse100Loading ? "Loading..." : formattedChange}
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">Weekly Change</div>
-            <div className="text-2xl font-bold text-foreground">125.6M</div>
-            <div className="text-sm text-muted-foreground">shares</div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">Monthly Change</div>
-            <div className="text-2xl font-bold text-foreground">8.2T</div>
-            <div className="text-sm text-muted-foreground">PKR</div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">Yearly Change</div>
-            <div className="text-2xl font-bold text-foreground">342</div>
-            <div className="text-sm text-green-600">+12 today</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">KSE-100 Index</div>
-            <div className="text-2xl font-bold text-foreground">{formattedPrice}</div>
-            <div className={`text-sm ${changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {kse100Loading ? "Loading..." : formattedChange}
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">Volume</div>
-            <div className="text-2xl font-bold text-foreground">125.6M</div>
-            <div className="text-sm text-muted-foreground">shares</div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">Market Cap</div>
-            <div className="text-2xl font-bold text-foreground">8.2T</div>
-            <div className="text-sm text-muted-foreground">PKR</div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="text-sm text-muted-foreground">Active Stocks</div>
-            <div className="text-2xl font-bold text-foreground">342</div>
-            <div className="text-sm text-green-600">+12 today</div>
-          </div>
-        </div>
-
-        {/* Watchlist Section */}
-        <div className="bg-card border border-border rounded-lg">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-xl font-semibold text-foreground">Your Watchlist</h2>
-            <p className="text-sm text-muted-foreground mt-1">Track your favorite PSX stocks</p>
-          </div>
-          <WatchlistTable />
-        </div>
+        <div className="text-sm text-muted-foreground">Trading Date: {tradingDate}</div>
       </div>
+
+      {/* Dashboard Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* Top Gainers */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-base">Top Gainers</CardTitle>
+            </div>
+            <CardDescription>Highest 1-day % gains</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.topGainers.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.pct_change_1d,
+                  kind: "pct",
+                  label: "1D Change",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=pct_change_1d.desc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all gainers →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Most Active Volume */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-base">Most Active</CardTitle>
+            </div>
+            <CardDescription>Highest trading volume</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.mostActiveVolume.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.volume,
+                  kind: "vol",
+                  label: "Volume",
+                }}
+                secondary={{
+                  value: ticker.pct_change_1d,
+                  kind: "pct",
+                  label: "1D %",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=volume.desc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all active →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Highest Turnover */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-purple-600" />
+              <CardTitle className="text-base">Highest Turnover</CardTitle>
+            </div>
+            <CardDescription>Largest trading value</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.highestTurnover.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.turnover,
+                  kind: "value",
+                  label: "Turnover",
+                }}
+                secondary={{
+                  value: ticker.pct_change_1d,
+                  kind: "pct",
+                  label: "1D %",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=turnover.desc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all turnover →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Largest Block Trades */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-orange-600" />
+              <CardTitle className="text-base">Largest Blocks</CardTitle>
+            </div>
+            <CardDescription>Biggest single orders</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.largestBlocks.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.biggest_order_shares,
+                  kind: "vol",
+                  label: "Shares",
+                }}
+                secondary={{
+                  value: ticker.biggest_order_value,
+                  kind: "value",
+                  label: "Value",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=biggest_order_shares.desc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all blocks →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* VWAP Premiums */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-base">VWAP Premiums</CardTitle>
+            </div>
+            <CardDescription>Trading above VWAP</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.vwapPremiums.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.vwap_gap_pct,
+                  kind: "pct",
+                  label: "VWAP Gap",
+                }}
+                secondary={{
+                  value: ticker.pct_change_1d,
+                  kind: "pct",
+                  label: "1D %",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=vwap_gap_pct.desc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all premiums →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* VWAP Discounts */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-600" />
+              <CardTitle className="text-base">VWAP Discounts</CardTitle>
+            </div>
+            <CardDescription>Trading below VWAP</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.vwapDiscounts.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.vwap_gap_pct,
+                  kind: "pct",
+                  label: "VWAP Gap",
+                }}
+                secondary={{
+                  value: ticker.pct_change_1d,
+                  kind: "pct",
+                  label: "1D %",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=vwap_gap_pct.asc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all discounts →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Volatility Leaders */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-yellow-600" />
+              <CardTitle className="text-base">Volatility Leaders</CardTitle>
+            </div>
+            <CardDescription>Highest intraday swings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {sections.volatilityLeaders.slice(0, 5).map((ticker) => (
+              <MetricRow
+                key={ticker.symbol}
+                symbol={ticker.symbol}
+                close={ticker.close}
+                primary={{
+                  value: ticker.intraday_volatility,
+                  kind: "pct",
+                  label: "Volatility",
+                }}
+                secondary={{
+                  value: ticker.pct_change_1d,
+                  kind: "pct",
+                  label: "1D %",
+                }}
+                hint={ticker.name}
+              />
+            ))}
+            <div className="pt-2">
+              <Link href="/tickers?sort=intraday_volatility.desc">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  See all volatile →
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Quick Actions</CardTitle>
+            <CardDescription>Navigate to key sections</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Link href="/tickers">
+              <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Browse All Tickers
+              </Button>
+            </Link>
+            <Link href="/dashboard/watchlist">
+              <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
+                <Volume2 className="h-4 w-4 mr-2" />
+                My Watchlist
+              </Button>
+            </Link>
+            <Link href="/dashboard/signals">
+              <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
+                <Zap className="h-4 w-4 mr-2" />
+                Trading Signals
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <DashboardLayout>
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+                <div className="h-4 w-48 bg-muted rounded animate-pulse mt-2" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <CardSkeleton />
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <DashboardContent />
+      </Suspense>
     </DashboardLayout>
   )
 }
