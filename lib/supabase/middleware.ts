@@ -10,6 +10,7 @@ export async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    console.log("[v0] Missing Supabase environment variables in middleware")
     throw new Error("Your project's URL and Key are required to create a Supabase client! (middleware)")
   }
 
@@ -38,13 +39,24 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  console.log(
+    "[v0] Middleware - User:",
+    user ? "authenticated" : "not authenticated",
+    "Path:",
+    request.nextUrl.pathname,
+  )
+
   if (
-    request.nextUrl.pathname !== "/" &&
     !user &&
-    !request.nextUrl.pathname.startsWith("/signin") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/api") &&
+    request.nextUrl.pathname !== "/" &&
+    request.nextUrl.pathname !== "/tickers" &&
+    !request.nextUrl.pathname.startsWith("/_next") &&
+    !request.nextUrl.pathname.startsWith("/favicon")
   ) {
     // no user, potentially respond by redirecting the user to the login page
+    console.log("[v0] Redirecting unauthenticated user to signin")
     const url = request.nextUrl.clone()
     url.pathname = "/auth/signin"
     return NextResponse.redirect(url)

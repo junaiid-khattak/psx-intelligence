@@ -23,6 +23,8 @@ export function SignInForm() {
     setIsLoading(true)
     setError(null)
 
+    console.log("[v0] Attempting signin with email:", email)
+
     try {
       const supabase = createClient()
 
@@ -31,11 +33,18 @@ export function SignInForm() {
         password,
       })
 
-      if (signInError) throw signInError
+      if (signInError) {
+        console.log("[v0] Signin error:", signInError.message)
+        throw signInError
+      }
 
-      router.push("/dashboard")
-      router.refresh() // Refresh to update auth state
+      console.log("[v0] Signin successful, redirecting to dashboard")
+      setTimeout(() => {
+        router.push("/dashboard")
+        router.refresh() // Refresh to update auth state
+      }, 100)
     } catch (error: unknown) {
+      console.log("[v0] Signin failed:", error)
       setError(error instanceof Error ? error.message : "An error occurred during signin")
     } finally {
       setIsLoading(false)
