@@ -12,6 +12,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Tickers", href: "/tickers", icon: TrendingUp }, // Added Tickers navigation
   { name: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
   { name: "Signals", href: "/dashboard/signals", icon: Zap },
   { name: "Profile", href: "/dashboard/profile", icon: User },

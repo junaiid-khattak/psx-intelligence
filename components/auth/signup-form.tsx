@@ -55,7 +55,8 @@ export function SignUpForm() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
           data: {
             full_name: `${formData.firstName} ${formData.lastName}`,
             first_name: formData.firstName,
