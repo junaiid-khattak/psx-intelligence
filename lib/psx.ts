@@ -1,5 +1,5 @@
 // PSX Intelligence Server Data Layer
-// Handles all data fetching from Supabase materialized view psx.mv_ticker_dashboard
+// Handles all data fetching from Supabase materialized view psx.mv_ticker_dashboard_stocks
 
 interface TickerData {
   symbol: string
@@ -43,15 +43,21 @@ interface DashboardSections {
 
 // Create a reusable fetcher with proper headers
 async function createSupabaseFetcher() {
-  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_PSX_INT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceKey) {
+    console.error("Missing Supabase environment variables:", {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!serviceKey,
+      availableEnvVars: Object.keys(process.env).filter(key => key.includes('SUPABASE'))
+    })
     throw new Error("Missing Supabase environment variables")
   }
 
   return {
     fetch: async (endpoint: string) => {
+      console .log("endpoint", endpoint);
       const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
         headers: {
           apikey: serviceKey,
@@ -61,7 +67,13 @@ async function createSupabaseFetcher() {
       })
 
       if (!response.ok) {
-        throw new Error(`Supabase fetch failed: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error(`Supabase fetch failed: ${response.status} ${response.statusText}`, {
+          endpoint,
+          url: `${supabaseUrl}/rest/v1/${endpoint}`,
+          error: errorText
+        })
+        throw new Error(`Supabase fetch failed: ${response.status} ${response.statusText} - ${errorText}`)
       }
 
       return response.json()
@@ -93,7 +105,7 @@ export async function fetchTickers({
       params.append("or", `symbol.ilike.${q}%,name.ilike.%${q}%`)
     }
 
-    const endpoint = `psx.mv_ticker_dashboard?${params.toString()}`
+    const endpoint = `mv_ticker_dashboard_stocks?${params.toString()}`
     return await fetcher.fetch(endpoint)
   } catch (error) {
     console.error("Error fetching tickers:", error)
@@ -120,13 +132,13 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapDiscounts,
       volatilityLeaders,
     ] = await Promise.all([
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
-      fetcher.fetch(`psx.mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
     ])
 
     return {
