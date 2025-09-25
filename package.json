@@ -46,6 +46,7 @@
     "@trpc/react-query": "latest",
     "@trpc/server": "latest",
     "@vercel/analytics": "latest",
+    "@vercel/speed-insights": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^2.30.0",
