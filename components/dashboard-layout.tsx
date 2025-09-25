@@ -9,6 +9,7 @@ import { TrendingUp, LayoutDashboard, Heart, Zap, Settings, LogOut, Menu, X, Use
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
+import { CacheStatusIndicator } from "./cache-status-indicator"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -180,6 +181,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <Menu className="h-4 w-4" />
             </Button>
             <div className="flex-1" />
+            <CacheStatusIndicator compact={true} />
             <div className="text-sm text-muted-foreground">
               Market Status: <span className="text-green-600 font-medium">Open</span>
             </div>

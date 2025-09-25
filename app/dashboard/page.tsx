@@ -7,6 +7,7 @@ import { MetricRow } from "@/components/psx/metric-row"
 import { CardSkeleton } from "@/components/psx/loading-skeleton"
 import { fetchDashboardSections } from "@/lib/psx"
 import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
+import { CacheStatusIndicator } from "@/components/cache-status-indicator"
 
 async function DashboardContent() {
   const sections = await fetchDashboardSections()
@@ -29,6 +30,8 @@ async function DashboardContent() {
         </div>
         <div className="text-sm text-muted-foreground">Trading Date: {tradingDate}</div>
       </div>
+
+      <CacheStatusIndicator showRefreshButton={true} compact={false} />
 
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

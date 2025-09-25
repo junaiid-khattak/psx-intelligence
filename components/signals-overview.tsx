@@ -7,6 +7,7 @@ import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Zap, TrendingUp, TrendingDown, AlertTriangle, Target } from "lucide-react"
 import { cn } from "../lib/utils"
+import { getCacheConfig } from "../lib/cache-config"
 
 const mockSignalStocks = ["UBL", "HBL", "ENGRO", "OGDC", "PSO"]
 
@@ -21,6 +22,8 @@ export function SignalsOverview() {
         [variables.ticker]: data,
       }))
     },
+    // Cache AI signals for longer since they're expensive to generate
+    ...getCacheConfig("aiSignals"),
   })
 
   const handleGenerateSignal = (ticker: string) => {

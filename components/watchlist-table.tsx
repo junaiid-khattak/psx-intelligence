@@ -11,9 +11,11 @@ import {
 } from "@tanstack/react-table"
 import { trpc } from "../lib/trpc"
 import { Button } from "./ui/button"
-import { ChevronUp, ChevronDown, TrendingUp, TrendingDown } from "lucide-react"
+import { ChevronUp, ChevronDown, TrendingUp, TrendingDown, RefreshCw } from "lucide-react"
 import { cn } from "../lib/utils"
 import { StockDetailCard } from "./stock-detail-card"
+import { useCacheInvalidation } from "../hooks/use-cache-invalidation"
+import { getCacheConfig } from "../lib/cache-config"
 
 interface Stock {
   ticker: string
@@ -32,7 +34,18 @@ export function WatchlistTable() {
     confidence: number
   } | null>(null)
 
-  const { data: stocks = [], isLoading } = trpc.getWatchlist.useQuery()
+  const {
+    data: stocks = [],
+    isLoading,
+    refetch,
+  } = trpc.getWatchlist.useQuery(undefined, {
+    ...getCacheConfig("watchlist"),
+    // Enable background refetching for live data
+    refetchIntervalInBackground: true,
+  })
+
+  const { manualInvalidate } = useCacheInvalidation()
+
   const explainSignalMutation = trpc.explainSignal.useMutation({
     onSuccess: (data) => {
       if (expandedRow) {
@@ -50,6 +63,11 @@ export function WatchlistTable() {
       setSignalExplanation(null)
       explainSignalMutation.mutate({ ticker: expandedRow })
     }
+  }
+
+  const handleRefresh = async () => {
+    manualInvalidate.watchlist()
+    await refetch()
   }
 
   const columns: ColumnDef<Stock>[] = [
@@ -167,6 +185,13 @@ export function WatchlistTable() {
   if (isLoading) {
     return (
       <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="animate-pulse h-6 w-32 bg-muted rounded" />
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="bg-transparent">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
         <div className="animate-pulse space-y-4">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-12 bg-muted rounded" />
@@ -178,6 +203,14 @@ export function WatchlistTable() {
 
   return (
     <div className="overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h3 className="text-lg font-semibold text-foreground">Watchlist</h3>
+        <Button variant="outline" size="sm" onClick={handleRefresh} className="bg-transparent">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh Data
+        </Button>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>

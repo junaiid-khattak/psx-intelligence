@@ -5,6 +5,7 @@ import { Card } from "./ui/card"
 import { Button } from "./ui/button"
 import { TrendingUp, TrendingDown, BarChart3, DollarSign, Percent, Building } from "lucide-react"
 import { cn } from "../lib/utils"
+import { getCacheConfig } from "../lib/cache-config"
 
 interface StockDetailCardProps {
   ticker: string
@@ -13,7 +14,14 @@ interface StockDetailCardProps {
 }
 
 export function StockDetailCard({ ticker, onExplainSignal, isLoadingSignal }: StockDetailCardProps) {
-  const { data: stockDetail, isLoading } = trpc.getStockDetail.useQuery({ ticker })
+  const { data: stockDetail, isLoading } = trpc.getStockDetail.useQuery(
+    { ticker },
+    {
+      ...getCacheConfig("stockDetails"),
+      // Keep data fresh for active stock details
+      refetchIntervalInBackground: false,
+    },
+  )
 
   if (isLoading) {
     return (

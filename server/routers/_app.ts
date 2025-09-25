@@ -55,14 +55,14 @@ export const appRouter = router({
 
   getKSE100Data: publicProcedure.query(async () => {
     try {
-      const response = await fetch('https://dps.psx.com.pk/timeseries/int/KSE100')
+      const response = await fetch("https://dps.psx.com.pk/timeseries/int/KSE100")
 
       if (!response.ok) {
         throw new Error(`Failed to fetch KSE100 data: ${response.status} ${response.statusText}`)
       }
 
       const data: KSE100Response = await response.json()
-      
+
       if (data.status !== 1) {
         throw new Error(`API returned error: ${data.message}`)
       }
@@ -83,8 +83,16 @@ export const appRouter = router({
         totalPoints: transformedData.length,
       }
     } catch (error) {
-      console.error('Error fetching KSE100 data:', error)
-      throw new Error(`Failed to fetch KSE100 data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error("Error fetching KSE100 data:", error)
+      throw new Error(`Failed to fetch KSE100 data: ${error instanceof Error ? error.message : "Unknown error"}`)
+    }
+  }),
+
+  getCacheStatus: publicProcedure.query(() => {
+    return {
+      lastInvalidation: global.lastCacheInvalidation || null,
+      cacheEvents: global.cacheInvalidationEvents || [],
+      serverTime: new Date().toISOString(),
     }
   }),
 })
