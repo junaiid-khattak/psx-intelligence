@@ -5,7 +5,19 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "../lib/utils"
 import { Button } from "./ui/button"
-import { TrendingUp, LayoutDashboard, Heart, Zap, Settings, LogOut, Menu, X, User } from "lucide-react"
+import {
+  TrendingUp,
+  LayoutDashboard,
+  Heart,
+  Zap,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  User,
+  Search,
+  BarChart3,
+} from "lucide-react"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
@@ -13,9 +25,11 @@ import { CacheStatusIndicator } from "./cache-status-indicator"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Tickers", href: "/tickers", icon: TrendingUp }, // Added Tickers navigation
+  { name: "Tickers", href: "/tickers", icon: TrendingUp },
   { name: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
   { name: "Signals", href: "/dashboard/signals", icon: Zap },
+  { name: "Screener", href: "/dashboard/screener", icon: Search },
+  { name: "Technical", href: "/dashboard/technical", icon: BarChart3 },
   { name: "Profile", href: "/dashboard/profile", icon: User },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
