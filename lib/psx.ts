@@ -44,12 +44,12 @@ interface DashboardSections {
 // Create a reusable fetcher with proper headers
 async function createSupabaseFetcher() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !serviceKey) {
+  if (!supabaseUrl || !anonKey) {
     console.error("Missing Supabase environment variables:", {
       hasSupabaseUrl: !!supabaseUrl,
-      hasServiceKey: !!serviceKey,
+      hasAnonKey: !!anonKey,
       availableEnvVars: Object.keys(process.env).filter((key) => key.includes("SUPABASE")),
     })
     throw new Error("Missing Supabase environment variables")
@@ -59,8 +59,8 @@ async function createSupabaseFetcher() {
     fetch: async (endpoint: string) => {
       const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
         headers: {
-          apikey: serviceKey,
-          authorization: `Bearer ${serviceKey}`,
+          apikey: anonKey,
+          authorization: `Bearer ${anonKey}`,
           "content-type": "application/json",
         },
       })
@@ -149,8 +149,8 @@ export async function fetchTickers({
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/mv_ticker_dashboard_stocks?${countParams.toString()}`,
         {
           headers: {
-            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
             "content-type": "application/json",
             Prefer: "count=exact",
           },
