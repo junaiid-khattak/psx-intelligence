@@ -1,103 +1,81 @@
 import type { NextRequest } from "next/server"
 
-import { cacheInvalidationEvents } from "../invalidate/route"
-
-// Simplified Server-Sent Events endpoint for cache invalidation
+// Server-Sent Events endpoint for real-time cache invalidation
 export async function GET(request: NextRequest) {
-  console.log("[v0] SSE endpoint called")
-
-  // Create a simple text encoder
   const encoder = new TextEncoder()
 
-  // Create the SSE stream
   const stream = new ReadableStream({
     start(controller) {
-      console.log("[v0] SSE stream starting")
-
       try {
         // Send initial connection message
-        const sendMessage = (data: any) => {
-          const message = `data: ${JSON.stringify(data)}\n\n`
-          controller.enqueue(encoder.encode(message))
-        }
+        const data = `data: ${JSON.stringify({ type: "CONNECTED", timestamp: new Date().toISOString() })}\n\n`
+        controller.enqueue(encoder.encode(data))
 
-        // Send connection confirmation
-        sendMessage({
-          type: "CONNECTED",
-          timestamp: new Date().toISOString(),
-        })
-        console.log("[v0] SSE connection message sent")
-
-        const checkEventsAndSendHeartbeat = () => {
+        // Set up interval to check for cache invalidation events
+        const interval = setInterval(() => {
           try {
-            // Check for cache invalidation events
-            const now = Date.now()
-            const recentEvents = cacheInvalidationEvents.filter((event: any) => {
+            const events = global.cacheInvalidationEvents || []
+            const recentEvents = events.filter((event) => {
               const eventTime = new Date(event.timestamp).getTime()
-              return now - eventTime < 60000 // Events from last 60 seconds
+              const now = Date.now()
+              return now - eventTime < 30000 // Events from last 30 seconds
             })
 
-            // Send any recent events
             if (recentEvents.length > 0) {
-              console.log(`[v0] SSE sending ${recentEvents.length} cache invalidation events`)
-              recentEvents.forEach((event: any) => {
-                sendMessage(event)
+              recentEvents.forEach((event) => {
+                const data = `data: ${JSON.stringify(event)}\n\n`
+                controller.enqueue(encoder.encode(data))
+              })
+
+              // Clear processed events
+              global.cacheInvalidationEvents = global.cacheInvalidationEvents.filter((event) => {
+                const eventTime = new Date(event.timestamp).getTime()
+                const now = Date.now()
+                return now - eventTime >= 30000
               })
             }
 
-            // Send heartbeat
-            sendMessage({
-              type: "HEARTBEAT",
-              timestamp: new Date().toISOString(),
-            })
-            console.log("[v0] SSE heartbeat sent")
+            // Send heartbeat every 30 seconds
+            const heartbeat = `data: ${JSON.stringify({ type: "HEARTBEAT", timestamp: new Date().toISOString() })}\n\n`
+            controller.enqueue(encoder.encode(heartbeat))
           } catch (error) {
             console.error("[v0] SSE interval error:", error)
+            // Don't close the stream for interval errors, just log them
           }
-        }
+        }, 30000)
 
-        // Send initial heartbeat
-        checkEventsAndSendHeartbeat()
-
-        // Set up interval for events and heartbeats
-        const interval = setInterval(checkEventsAndSendHeartbeat, 15000) // Every 15 seconds
-
+        // Clean up on close
         const cleanup = () => {
-          console.log("[v0] SSE cleanup initiated")
           clearInterval(interval)
           try {
             controller.close()
           } catch (error) {
+            // Controller might already be closed
             console.log("[v0] SSE controller cleanup completed")
           }
         }
 
-        // Handle client disconnect
-        if (request.signal) {
-          request.signal.addEventListener("abort", cleanup)
+        request.signal.addEventListener("abort", cleanup)
+
+        // Also handle stream errors
+        controller.error = (error: any) => {
+          console.error("[v0] SSE stream error:", error)
+          cleanup()
         }
-        // Store cleanup for potential manual use
-        ;(controller as any).cleanup = cleanup
       } catch (error) {
         console.error("[v0] SSE initialization error:", error)
-        try {
-          controller.close()
-        } catch (closeError) {
-          console.error("[v0] SSE controller close error:", closeError)
-        }
+        controller.close()
       }
     },
   })
 
-  // Return the SSE response
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Cache-Control": "no-cache",
       Connection: "keep-alive",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Cache-Control",
-      "X-Accel-Buffering": "no", // Disable nginx buffering
     },
   })
 }
