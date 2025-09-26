@@ -137,37 +137,55 @@ export async function fetchTickers({
 
     const endpoint = `mv_ticker_dashboard_stocks?${params.toString()}`
 
-    // Get total count with a separate request using Prefer: count=exact header
-    const countResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/mv_ticker_dashboard_stocks?${q && q.trim() ? `or=symbol.ilike.*${q}*,name.ilike.*${q}*&` : ""}select=count`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-          "content-type": "application/json",
-          Prefer: "count=exact",
-        },
-      },
-    )
+    let totalCount = 0
+    try {
+      const countParams = new URLSearchParams()
+      if (q && q.trim()) {
+        countParams.append("or", `symbol.ilike.*${q}*,name.ilike.*${q}*`)
+      }
+      countParams.append("select", "count")
 
-    const totalCount = Number.parseInt(countResponse.headers.get("content-range")?.split("/")[1] || "0")
+      const countResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/mv_ticker_dashboard_stocks?${countParams.toString()}`,
+        {
+          headers: {
+            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+            "content-type": "application/json",
+            Prefer: "count=exact",
+          },
+        },
+      )
+
+      if (countResponse.ok) {
+        const contentRange = countResponse.headers.get("content-range")
+        if (contentRange) {
+          totalCount = Number.parseInt(contentRange.split("/")[1] || "0")
+        }
+      }
+    } catch (countError) {
+      console.warn("[v0] Failed to get total count, using data length:", countError)
+    }
 
     // Get the actual data
     const data = await fetcher.fetch(endpoint)
+
+    if (totalCount === 0 && data.length > 0) {
+      totalCount = data.length + offset // Estimate based on current page
+    }
 
     console.log("[v0] Fetched tickers via PostgREST:", {
       count: data.length,
       totalCount,
       searchQuery: q,
       sort: `${sortColumn}.${sortDirection}`,
+      endpoint,
     })
 
     return { data, totalCount }
   } catch (error) {
-    console.error("Error fetching tickers via PostgREST:", error)
-    // Return mock data for development/testing
-    const mockData = getMockTickers()
-    return { data: mockData, totalCount: mockData.length }
+    console.error("[v0] Error fetching tickers via PostgREST:", error)
+    throw new Error(`Failed to fetch tickers: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
@@ -215,8 +233,7 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
     }
   } catch (error) {
     console.error("[v0] Error fetching dashboard sections:", error)
-    // Return mock data for development/testing
-    return getMockDashboardSections()
+    throw new Error(`Failed to fetch dashboard sections: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
