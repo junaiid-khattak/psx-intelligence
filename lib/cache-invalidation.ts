@@ -34,6 +34,7 @@ export class CacheInvalidationManager {
         this.reconnectTimer = null
       }
 
+      console.log("[v0] Connecting to SSE...")
       this.eventSource = new EventSource("/api/cache/events")
 
       this.eventSource.onopen = () => {
@@ -45,14 +46,15 @@ export class CacheInvalidationManager {
       this.eventSource.onmessage = (event) => {
         try {
           const data: CacheInvalidationEvent = JSON.parse(event.data)
+          console.log("[v0] SSE message received:", data)
           this.handleCacheInvalidation(data)
         } catch (error) {
           console.error("[v0] Failed to parse SSE message:", error)
         }
       }
 
-      this.eventSource.onerror = () => {
-        console.log("[v0] Cache invalidation SSE error, attempting reconnect...")
+      this.eventSource.onerror = (error) => {
+        console.log("[v0] Cache invalidation SSE error, attempting reconnect...", error)
         this.isConnected = false
         this.eventSource?.close()
         this.reconnect()
@@ -106,11 +108,6 @@ export class CacheInvalidationManager {
   }
 
   private handleCacheInvalidation(event: CacheInvalidationEvent) {
-    if (!this.trpcUtils) {
-      console.warn("[v0] tRPC utils not available for cache invalidation")
-      return
-    }
-
     console.log("[v0] Processing cache invalidation:", event)
 
     switch (event.type) {
@@ -121,44 +118,54 @@ export class CacheInvalidationManager {
         console.log("[v0] Connected to cache invalidation stream")
         break
       case "HEARTBEAT":
+        console.log("[v0] SSE heartbeat received")
         // Keep connection alive
         break
     }
   }
 
   private invalidateQueries(sections: string[], tickers: string[]) {
-    if (!this.trpcUtils) return
+    console.log("[v0] Invalidating queries for sections:", sections, "tickers:", tickers)
 
     try {
-      // Invalidate dashboard sections
-      if (sections.includes("all") || sections.includes("watchlist")) {
-        this.trpcUtils.getWatchlist.invalidate()
-        console.log("[v0] Invalidated watchlist cache")
-      }
+      const shouldRefreshDashboard =
+        sections.includes("all") || sections.includes("dashboard") || sections.includes("tickers")
 
-      if (sections.includes("all") || sections.includes("kse100")) {
-        this.trpcUtils.getKSE100Data.invalidate()
-        console.log("[v0] Invalidated KSE100 cache")
-      }
-
-      // Invalidate specific ticker details
-      if (tickers.length > 0) {
-        tickers.forEach((ticker) => {
-          this.trpcUtils.getStockDetail.invalidate({ ticker })
-          console.log(`[v0] Invalidated ${ticker} stock detail cache`)
-        })
-      }
-
-      // If no specific sections/tickers, invalidate everything
-      if (sections.includes("all") && tickers.length === 0) {
-        this.trpcUtils.invalidate()
-        console.log("[v0] Invalidated all tRPC caches")
-      }
-
-      // Trigger a page refresh for server-side cached data
-      if (sections.includes("all") || sections.includes("dashboard")) {
+      if (shouldRefreshDashboard) {
+        console.log("[v0] Dashboard cache invalidation detected - refreshing page")
         // Force refresh of server-side dashboard data
         window.location.reload()
+        return // Exit early since we're reloading the page
+      }
+
+      // Handle tRPC cache invalidation for other sections
+      if (this.trpcUtils) {
+        // Invalidate dashboard sections
+        if (sections.includes("all") || sections.includes("watchlist")) {
+          this.trpcUtils.getWatchlist.invalidate()
+          console.log("[v0] Invalidated watchlist cache")
+        }
+
+        if (sections.includes("all") || sections.includes("kse100")) {
+          this.trpcUtils.getKSE100Data.invalidate()
+          console.log("[v0] Invalidated KSE100 cache")
+        }
+
+        // Invalidate specific ticker details
+        if (tickers.length > 0) {
+          tickers.forEach((ticker) => {
+            this.trpcUtils.getStockDetail.invalidate({ ticker })
+            console.log(`[v0] Invalidated ${ticker} stock detail cache`)
+          })
+        }
+
+        // If no specific sections/tickers, invalidate everything
+        if (sections.includes("all") && tickers.length === 0) {
+          this.trpcUtils.invalidate()
+          console.log("[v0] Invalidated all tRPC caches")
+        }
+      } else {
+        console.warn("[v0] tRPC utils not available for cache invalidation")
       }
     } catch (error) {
       console.error("[v0] Error during cache invalidation:", error)
