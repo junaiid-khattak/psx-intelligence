@@ -93,25 +93,69 @@ export async function fetchTickers({
     // Parse sort parameter
     const [sortColumn, sortDirection] = sort.split(".")
 
-    // Build RPC call parameters
-    const params = new URLSearchParams({
-      search_query: q || "",
-      sort_column: sortColumn || "symbol",
-      sort_direction: sortDirection || "asc",
-      page_limit: limit.toString(),
-      page_offset: offset.toString(),
-    })
+    // Build PostgREST query parameters
+    const params = new URLSearchParams()
 
-    const endpoint = `rpc/get_ticker_dashboard_stocks?${params.toString()}`
-    const result = await fetcher.fetch(endpoint)
+    // Add search filter if provided
+    if (q && q.trim()) {
+      // Search across symbol and name using PostgREST's or filter
+      params.append("or", `symbol.ilike.*${q}*,name.ilike.*${q}*`)
+    }
 
-    // Extract total count from first row (all rows have same total_count)
-    const totalCount = result.length > 0 ? result[0].total_count : 0
+    // Add sorting
+    params.append("order", `${sortColumn || "symbol"}.${sortDirection || "asc"}.nullslast`)
 
-    // Remove total_count from data rows
-    const data = result.map(({ total_count, ...row }: any) => row)
+    // Add pagination
+    params.append("limit", limit.toString())
+    params.append("offset", offset.toString())
 
-    console.log("[v0] Fetched tickers via RPC:", {
+    // Select all columns we need
+    const selectColumns = [
+      "symbol",
+      "name",
+      "sector",
+      "trading_date",
+      "open",
+      "high",
+      "low",
+      "close",
+      "prev_close",
+      "pct_change_1d",
+      "volume",
+      "turnover",
+      "vwap",
+      "vwap_gap_pct",
+      "trade_count",
+      "avg_trade_size",
+      "median_trade_size",
+      "intraday_volatility",
+      "biggest_order_shares",
+      "biggest_order_value",
+    ].join(",")
+
+    params.append("select", selectColumns)
+
+    const endpoint = `mv_ticker_dashboard_stocks?${params.toString()}`
+
+    // Get total count with a separate request using Prefer: count=exact header
+    const countResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/mv_ticker_dashboard_stocks?${q && q.trim() ? `or=symbol.ilike.*${q}*,name.ilike.*${q}*&` : ""}select=count`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          "content-type": "application/json",
+          Prefer: "count=exact",
+        },
+      },
+    )
+
+    const totalCount = Number.parseInt(countResponse.headers.get("content-range")?.split("/")[1] || "0")
+
+    // Get the actual data
+    const data = await fetcher.fetch(endpoint)
+
+    console.log("[v0] Fetched tickers via PostgREST:", {
       count: data.length,
       totalCount,
       searchQuery: q,
@@ -120,7 +164,7 @@ export async function fetchTickers({
 
     return { data, totalCount }
   } catch (error) {
-    console.error("Error fetching tickers via RPC:", error)
+    console.error("Error fetching tickers via PostgREST:", error)
     // Return mock data for development/testing
     const mockData = getMockTickers()
     return { data: mockData, totalCount: mockData.length }
