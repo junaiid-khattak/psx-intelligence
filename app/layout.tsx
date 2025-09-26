@@ -1,10 +1,10 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-// import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
-// import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Providers } from "../components/providers"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Providers } from "../components/providers.tsx"
 import "./globals.css"
 
 const inter = Inter({
@@ -28,9 +28,9 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <Providers>
           <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
-          {/* <SpeedInsights /> */}
+          <SpeedInsights />
         </Providers>
-        {/* <Analytics /> */}
+        <Analytics />
       </body>
     </html>
   )

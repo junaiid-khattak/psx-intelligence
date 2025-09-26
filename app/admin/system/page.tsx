@@ -1,7 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { AdminLayout } from "@/components/admin/admin-layout"
-import { UserManagement } from "@/components/admin/user-management"
+import { SystemMonitoring } from "@/components/admin/system-monitoring"
 
 export const dynamic = "force-dynamic"
 
@@ -26,12 +26,12 @@ async function checkAdminAccess() {
   return { user, userData }
 }
 
-export default async function AdminUsersPage() {
+export default async function AdminSystemPage() {
   await checkAdminAccess()
 
   return (
     <AdminLayout>
-      <UserManagement />
+      <SystemMonitoring />
     </AdminLayout>
   )
 }

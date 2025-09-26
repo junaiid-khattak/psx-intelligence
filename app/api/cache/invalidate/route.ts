@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-let cacheInvalidationEvents: any[] = []
-
 export async function POST(request: NextRequest) {
   console.log("[v0] Cache invalidate POST request received")
 
@@ -31,11 +29,14 @@ export async function POST(request: NextRequest) {
       tickers: tickers || [], // Specific tickers to invalidate
     }
 
-    cacheInvalidationEvents.push(invalidationData)
+    // Store the invalidation event in a simple in-memory store
+    // In production, you might want to use Redis or a database
+    global.cacheInvalidationEvents = global.cacheInvalidationEvents || []
+    global.cacheInvalidationEvents.push(invalidationData)
 
     // Keep only the last 10 events to prevent memory leaks
-    if (cacheInvalidationEvents.length > 10) {
-      cacheInvalidationEvents = cacheInvalidationEvents.slice(-10)
+    if (global.cacheInvalidationEvents.length > 10) {
+      global.cacheInvalidationEvents = global.cacheInvalidationEvents.slice(-10)
     }
 
     console.log("[v0] Cache invalidation triggered:", invalidationData)
@@ -60,7 +61,6 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check recent invalidation events
 export async function GET() {
   console.log("[v0] Cache invalidate GET request received")
-  return NextResponse.json({ events: cacheInvalidationEvents, count: cacheInvalidationEvents.length })
+  const events = global.cacheInvalidationEvents || []
+  return NextResponse.json({ events, count: events.length })
 }
-
-export { cacheInvalidationEvents }

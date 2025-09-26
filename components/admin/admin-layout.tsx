@@ -3,17 +3,29 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Shield, Users, Database, Settings, LogOut, Menu, X, TrendingUp, BarChart3, RefreshCw } from "lucide-react"
+import { cn } from "../../lib/utils"
+import { Button } from "../ui/button"
+import {
+  Shield,
+  Users,
+  Activity,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  BarChart3,
+  Database,
+  AlertTriangle,
+  TrendingUp,
+} from "lucide-react"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: BarChart3 },
-  { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Cache Management", href: "/admin/cache", icon: RefreshCw },
+  { name: "User Management", href: "/admin/users", icon: Users },
+  { name: "System Monitoring", href: "/admin/system", icon: Activity },
   { name: "Database", href: "/admin/database", icon: Database },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ]
@@ -27,6 +39,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -44,12 +57,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       }
 
       setUser(user)
+
+      // Fetch user data and check admin role
+      const { data: userData } = await supabase.from("psx.users").select("*").eq("id", user.id).single()
+
+      if (!userData || userData.role !== "admin") {
+        router.push("/dashboard")
+        return
+      }
+
+      setUserData(userData)
       setLoading(false)
     }
 
     getUser()
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -57,6 +79,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         router.push("/auth/signin")
       } else if (event === "SIGNED_IN" && session?.user) {
         setUser(session.user)
+        getUser()
       }
     })
 
@@ -74,15 +97,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Shield className="h-8 w-8 text-primary mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Loading admin panel...</p>
+          <p className="text-muted-foreground">Loading Admin Panel...</p>
         </div>
       </div>
     )
   }
 
-  if (!user) {
+  if (!user || !userData || userData.role !== "admin") {
     return null
   }
+
+  const userInitials = userData?.full_name
+    ? userData.full_name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+    : user.email?.charAt(0).toUpperCase() || "A"
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,10 +132,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
-            <Shield className="h-8 w-8 text-primary" />
+            <Shield className="h-8 w-8 text-red-600" />
             <div>
               <span className="text-xl font-bold text-foreground">PSX Admin</span>
-              <p className="text-xs text-muted-foreground">Intelligence Panel</p>
+              <p className="text-xs text-muted-foreground">Intelligence Platform</p>
             </div>
             <Button variant="ghost" size="sm" className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
               <X className="h-4 w-4" />
@@ -121,9 +152,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    isActive ? "bg-red-600 text-white" : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -134,34 +163,37 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             })}
           </nav>
 
+          {/* Quick Actions */}
+          <div className="px-4 py-4 border-t border-border">
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm" className="w-full justify-start mb-2 bg-transparent">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                User Dashboard
+              </Button>
+            </Link>
+          </div>
+
           {/* User section */}
           <div className="border-t border-border p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                <Shield className="h-4 w-4 text-primary" />
+              <div className="w-8 h-8 bg-red-600/10 rounded-full flex items-center justify-center">
+                <span className="text-sm font-medium text-red-600">{userInitials}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">Admin User</p>
+                <p className="text-sm font-medium text-foreground truncate">{userData?.full_name || "Admin"}</p>
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="text-xs text-red-600 font-medium">Administrator</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  User Dashboard
-                </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-muted-foreground"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-muted-foreground"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>
@@ -174,9 +206,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-4 w-4" />
             </Button>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <span className="text-sm font-medium text-red-600">Admin Mode</span>
+            </div>
             <div className="flex-1" />
             <div className="text-sm text-muted-foreground">
-              Admin Panel - <span className="text-primary font-medium">PSX Intelligence</span>
+              System Status: <span className="text-green-600 font-medium">Operational</span>
             </div>
           </div>
         </div>

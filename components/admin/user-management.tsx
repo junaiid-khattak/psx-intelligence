@@ -1,17 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Users, Search, Mail, Calendar, MoreHorizontal, UserCheck } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Users, Search, MoreHorizontal, UserCheck, Shield, Mail, Calendar } from "lucide-react"
+import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 
 interface User {
   id: string
   email: string
-  full_name: string | null
+  full_name: string
+  role: "user" | "admin" | "moderator"
   created_at: string
   updated_at: string
 }
@@ -19,47 +23,70 @@ interface User {
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedRole, setSelectedRole] = useState<string>("all")
 
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const supabase = createClient()
-        const { data, error } = await supabase.from("psx.users").select("*").order("created_at", { ascending: false })
-
-        if (error) throw error
-        setUsers(data || [])
-        setFilteredUsers(data || [])
-      } catch (error) {
-        console.error("Failed to load users:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadUsers()
+    fetchUsers()
   }, [])
 
-  useEffect(() => {
-    if (!searchQuery) {
-      setFilteredUsers(users)
-    } else {
-      const filtered = users.filter(
-        (user) =>
-          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (user.full_name && user.full_name.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
-      setFilteredUsers(filtered)
-    }
-  }, [searchQuery, users])
+  const fetchUsers = async () => {
+    const supabase = createClient()
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
+    try {
+      const { data, error } = await supabase
+        .from("psx.users")
+        .select("id, email, full_name, role, created_at, updated_at")
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      setUsers(data || [])
+    } catch (error) {
+      console.error("Error fetching users:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateUserRole = async (userId: string, newRole: string) => {
+    const supabase = createClient()
+
+    try {
+      const { error } = await supabase.from("psx.users").update({ role: newRole }).eq("id", userId)
+
+      if (error) throw error
+
+      // Update local state
+      setUsers(users.map((user) => (user.id === userId ? { ...user, role: newRole as any } : user)))
+
+      // Log admin activity
+      await supabase.rpc("log_admin_activity", {
+        p_action: "role_change",
+        p_target_user_id: userId,
+        p_details: { new_role: newRole },
+      })
+    } catch (error) {
+      console.error("Error updating user role:", error)
+    }
+  }
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesRole = selectedRole === "all" || user.role === selectedRole
+    return matchesSearch && matchesRole
+  })
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "bg-red-100 text-red-800"
+      case "moderator":
+        return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
   }
 
   return (
@@ -67,124 +94,131 @@ export function UserManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground mt-1">Manage platform users and permissions</p>
+          <p className="text-muted-foreground mt-1">Manage user accounts and permissions</p>
         </div>
+        <Badge variant="outline" className="flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          {users.length} Total Users
+        </Badge>
       </div>
 
-      {/* Search and Stats */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-lg">Search Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by email or name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search users by email or name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              <CardTitle className="text-base">Total Users</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{loading ? "..." : users.length.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground">{filteredUsers.length} shown</p>
-          </CardContent>
-        </Card>
-      </div>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="user">Users</SelectItem>
+                <SelectItem value="moderator">Moderators</SelectItem>
+                <SelectItem value="admin">Admins</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Users</CardTitle>
-          <CardDescription>
-            {loading ? "Loading users..." : `Showing ${filteredUsers.length} of ${users.length} users`}
-          </CardDescription>
+          <CardTitle>Users ({filteredUsers.length})</CardTitle>
+          <CardDescription>Manage user accounts, roles, and permissions</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent>
           {loading ? (
-            <div className="p-6 text-center">
-              <div className="animate-pulse">Loading users...</div>
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading users...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Joined
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                              {user.full_name
-                                ? user.full_name.charAt(0).toUpperCase()
-                                : user.email.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{user.full_name || "No name"}</p>
-                            <p className="text-sm text-muted-foreground">ID: {user.id.slice(0, 8)}...</p>
-                          </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-primary">
+                            {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                          </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{user.email}</span>
+                        <div>
+                          <p className="font-medium">{user.full_name || "No name"}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{formatDate(user.created_at)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="outline">
-                          <UserCheck className="h-3 w-3 mr-1" />
-                          Active
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getRoleBadgeColor(user.role)}>{user.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(user.updated_at).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => updateUserRole(user.id, "user")}>
+                            <UserCheck className="h-4 w-4 mr-2" />
+                            Make User
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateUserRole(user.id, "moderator")}>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Make Moderator
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateUserRole(user.id, "admin")}>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Make Admin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Email
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
