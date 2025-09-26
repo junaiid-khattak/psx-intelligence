@@ -19,16 +19,53 @@ export function CacheStatusIndicator({ showRefreshButton = true, compact = false
   const utils = trpc.useUtils()
 
   useEffect(() => {
-    // Monitor connection status
-    const checkConnection = () => {
-      // Simple check - in a real app you might want to ping the server
-      setConnectionStatus("connected")
+    let eventSource: EventSource | null = null
+
+    const connectSSE = () => {
+      try {
+        setConnectionStatus("connecting")
+        eventSource = new EventSource("/api/cache/events")
+
+        eventSource.onopen = () => {
+          console.log("[v0] Cache SSE connected")
+          setConnectionStatus("connected")
+        }
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            console.log("[v0] Cache invalidation event received:", data)
+
+            if (data.type === "CACHE_INVALIDATE") {
+              setLastUpdate(new Date())
+              // Trigger page refresh for server-side data
+              window.location.reload()
+            }
+          } catch (error) {
+            console.error("[v0] Error parsing SSE message:", error)
+          }
+        }
+
+        eventSource.onerror = () => {
+          console.log("[v0] Cache SSE error")
+          setConnectionStatus("disconnected")
+          eventSource?.close()
+
+          // Retry connection after 5 seconds
+          setTimeout(connectSSE, 5000)
+        }
+      } catch (error) {
+        console.error("[v0] Failed to connect to cache SSE:", error)
+        setConnectionStatus("disconnected")
+        setTimeout(connectSSE, 5000)
+      }
     }
 
-    checkConnection()
-    const interval = setInterval(checkConnection, 30000) // Check every 30 seconds
+    connectSSE()
 
-    return () => clearInterval(interval)
+    return () => {
+      eventSource?.close()
+    }
   }, [])
 
   const handleManualRefresh = async () => {

@@ -50,7 +50,7 @@ async function createSupabaseFetcher() {
     console.error("Missing Supabase environment variables:", {
       hasSupabaseUrl: !!supabaseUrl,
       hasServiceKey: !!serviceKey,
-      availableEnvVars: Object.keys(process.env).filter(key => key.includes('SUPABASE'))
+      availableEnvVars: Object.keys(process.env).filter((key) => key.includes("SUPABASE")),
     })
     throw new Error("Missing Supabase environment variables")
   }
@@ -70,7 +70,7 @@ async function createSupabaseFetcher() {
         console.error(`Supabase fetch failed: ${response.status} ${response.statusText}`, {
           endpoint,
           url: `${supabaseUrl}/rest/v1/${endpoint}`,
-          error: errorText
+          error: errorText,
         })
         throw new Error(`Supabase fetch failed: ${response.status} ${response.statusText} - ${errorText}`)
       }
@@ -134,11 +134,17 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
+      fetcher.fetch(
+        `mv_ticker_dashboard_stocks?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`,
+      ),
       fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
+      fetcher.fetch(
+        `mv_ticker_dashboard_stocks?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`,
+      ),
     ])
+
+    console.log("[v0] Dashboard sections fetched successfully")
 
     return {
       topGainers,
@@ -150,6 +156,7 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       volatilityLeaders,
     }
   } catch (error) {
+    console.error("[v0] Error fetching dashboard sections:", error)
     // Return mock data for development/testing
     return getMockDashboardSections()
   }

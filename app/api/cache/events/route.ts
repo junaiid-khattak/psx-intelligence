@@ -19,6 +19,13 @@ export async function GET(request: NextRequest) {
         // Set up interval to check for cache invalidation events
         const interval = setInterval(() => {
           try {
+            // Check if controller is still open
+            if (controller.desiredSize === null) {
+              console.log("[v0] SSE controller closed, clearing interval")
+              clearInterval(interval)
+              return
+            }
+
             const events = global.cacheInvalidationEvents || []
             const recentEvents = events.filter((event) => {
               const eventTime = new Date(event.timestamp).getTime()
@@ -46,7 +53,13 @@ export async function GET(request: NextRequest) {
             controller.enqueue(encoder.encode(heartbeat))
           } catch (error) {
             console.error("[v0] SSE interval error:", error)
-            // Don't close the stream for interval errors, just log them
+            // Clear interval on error to prevent spam
+            clearInterval(interval)
+            try {
+              controller.error(error)
+            } catch (e) {
+              console.log("[v0] Controller already closed")
+            }
           }
         }, 30000)
 
@@ -54,13 +67,6 @@ export async function GET(request: NextRequest) {
         const cleanup = () => {
           console.log("[v0] SSE cleanup initiated")
           clearInterval(interval)
-          try {
-            if (!controller.desiredSize === null) {
-              controller.close()
-            }
-          } catch (error) {
-            console.log("[v0] SSE controller cleanup completed (was already closed)")
-          }
         }
 
         // Handle client disconnect

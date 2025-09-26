@@ -14,7 +14,6 @@ import { Button } from "./ui/button"
 import { ChevronUp, ChevronDown, TrendingUp, TrendingDown, RefreshCw } from "lucide-react"
 import { cn } from "../lib/utils"
 import { StockDetailCard } from "./stock-detail-card"
-import { cacheManager } from "../lib/cache-invalidation"
 import { getCacheConfig } from "../lib/cache-config"
 
 interface Stock {
@@ -34,6 +33,8 @@ export function WatchlistTable() {
     confidence: number
   } | null>(null)
 
+  const utils = trpc.useUtils()
+
   const {
     data: stocks = [],
     isLoading,
@@ -45,7 +46,7 @@ export function WatchlistTable() {
   })
 
   const handleRefresh = async () => {
-    cacheManager.invalidateWatchlist()
+    await utils.getWatchlist.invalidate()
     await refetch()
   }
 

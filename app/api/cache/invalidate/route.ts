@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 
 export async function POST(request: NextRequest) {
   console.log("[v0] Cache invalidate POST request received")
@@ -19,6 +20,24 @@ export async function POST(request: NextRequest) {
     if (apiKey !== expectedApiKey) {
       console.log("[v0] Invalid API key provided")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    try {
+      // Revalidate dashboard pages to refresh server-side data
+      revalidatePath("/dashboard")
+      revalidatePath("/tickers")
+
+      // If specific sections are provided, we could be more granular
+      if (sections && sections.length > 0) {
+        console.log("[v0] Revalidating specific sections:", sections)
+        // For now, revalidate all dashboard-related paths
+        revalidatePath("/dashboard", "layout")
+      }
+
+      console.log("[v0] Next.js cache revalidation completed")
+    } catch (revalidateError) {
+      console.error("[v0] Next.js revalidation error:", revalidateError)
+      // Continue with SSE invalidation even if revalidation fails
     }
 
     // Broadcast cache invalidation event to all connected clients
