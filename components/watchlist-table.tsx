@@ -14,7 +14,7 @@ import { Button } from "./ui/button"
 import { ChevronUp, ChevronDown, TrendingUp, TrendingDown, RefreshCw } from "lucide-react"
 import { cn } from "../lib/utils"
 import { StockDetailCard } from "./stock-detail-card"
-import { useCacheInvalidation } from "../hooks/use-cache-invalidation"
+import { cacheManager } from "../lib/cache-invalidation"
 import { getCacheConfig } from "../lib/cache-config"
 
 interface Stock {
@@ -44,7 +44,10 @@ export function WatchlistTable() {
     refetchIntervalInBackground: true,
   })
 
-  const { manualInvalidate } = useCacheInvalidation()
+  const handleRefresh = async () => {
+    cacheManager.invalidateWatchlist()
+    await refetch()
+  }
 
   const explainSignalMutation = trpc.explainSignal.useMutation({
     onSuccess: (data) => {
@@ -63,11 +66,6 @@ export function WatchlistTable() {
       setSignalExplanation(null)
       explainSignalMutation.mutate({ ticker: expandedRow })
     }
-  }
-
-  const handleRefresh = async () => {
-    manualInvalidate.watchlist()
-    await refetch()
   }
 
   const columns: ColumnDef<Stock>[] = [

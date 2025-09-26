@@ -88,6 +88,23 @@ export const appRouter = router({
     }
   }),
 
+  getDashboardSections: publicProcedure.query(async () => {
+    // Import the server-side function
+    const { fetchDashboardSections } = await import("../lib/psx")
+
+    try {
+      const sections = await fetchDashboardSections()
+      return {
+        success: true,
+        data: sections,
+        lastUpdated: new Date(),
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard sections:", error)
+      throw new Error(`Failed to fetch dashboard sections: ${error instanceof Error ? error.message : "Unknown error"}`)
+    }
+  }),
+
   getCacheStatus: publicProcedure.query(() => {
     return {
       lastInvalidation: global.lastCacheInvalidation || null,

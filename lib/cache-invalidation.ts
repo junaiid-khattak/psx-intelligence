@@ -9,11 +9,12 @@ export class CacheInvalidationManager {
   private eventSource: EventSource | null = null
   private trpcUtils: any = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 10
-  private reconnectDelay = 1000
-  private maxReconnectDelay = 30000 // Cap at 30 seconds
+  private maxReconnectAttempts = 5 // Reduced max attempts to prevent spam
+  private reconnectDelay = 2000 // Increased initial delay
+  private maxReconnectDelay = 30000
   private isConnected = false
   private reconnectTimer: NodeJS.Timeout | null = null
+  private healthCheckTimer: NodeJS.Timeout | null = null
 
   constructor() {
     // Initialize in browser only
@@ -25,6 +26,7 @@ export class CacheInvalidationManager {
 
   setTrpcUtils(utils: any) {
     this.trpcUtils = utils
+    console.log("[v0] tRPC utils set for cache manager")
   }
 
   private connect() {
@@ -34,10 +36,17 @@ export class CacheInvalidationManager {
         this.reconnectTimer = null
       }
 
+      // Close existing connection if any
+      if (this.eventSource) {
+        this.eventSource.close()
+        this.eventSource = null
+      }
+
+      console.log("[v0] Attempting SSE connection...")
       this.eventSource = new EventSource("/api/cache/events")
 
       this.eventSource.onopen = () => {
-        console.log("[v0] Cache invalidation SSE connected")
+        console.log("[v0] Cache invalidation SSE connected successfully")
         this.reconnectAttempts = 0
         this.isConnected = true
       }
@@ -45,64 +54,57 @@ export class CacheInvalidationManager {
       this.eventSource.onmessage = (event) => {
         try {
           const data: CacheInvalidationEvent = JSON.parse(event.data)
+          console.log("[v0] SSE message received:", data.type)
           this.handleCacheInvalidation(data)
         } catch (error) {
           console.error("[v0] Failed to parse SSE message:", error)
         }
       }
 
-      this.eventSource.onerror = () => {
-        console.log("[v0] Cache invalidation SSE error, attempting reconnect...")
+      this.eventSource.onerror = (error) => {
+        console.log("[v0] Cache invalidation SSE error occurred")
         this.isConnected = false
-        this.eventSource?.close()
-        this.reconnect()
+
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.eventSource?.close()
+          this.reconnect()
+        } else {
+          console.log("[v0] Max reconnection attempts reached, will retry in health check")
+          this.eventSource?.close()
+          this.eventSource = null
+        }
       }
     } catch (error) {
-      console.error("[v0] Failed to connect to cache invalidation SSE:", error)
+      console.error("[v0] Failed to create SSE connection:", error)
       this.isConnected = false
       this.reconnect()
     }
   }
 
   private reconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++
-      const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay)
-
-      this.reconnectTimer = setTimeout(() => {
-        console.log(`[v0] Reconnecting to SSE (attempt ${this.reconnectAttempts})...`)
-        this.connect()
-      }, delay)
-    } else {
-      console.error("[v0] Max reconnection attempts reached for cache invalidation SSE")
-      this.schedulePeriodicRetry()
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log("[v0] Max reconnection attempts reached for cache invalidation SSE")
+      return
     }
-  }
 
-  private schedulePeriodicRetry() {
-    // Wait 5 minutes before trying again
-    this.reconnectTimer = setTimeout(
-      () => {
-        console.log("[v0] Attempting periodic SSE reconnection...")
-        this.reconnectAttempts = 0 // Reset attempts for periodic retry
-        this.connect()
-      },
-      5 * 60 * 1000,
-    ) // 5 minutes
+    this.reconnectAttempts++
+    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay)
+
+    console.log(`[v0] Reconnecting to SSE (attempt ${this.reconnectAttempts}) in ${delay}ms...`)
+
+    this.reconnectTimer = setTimeout(() => {
+      this.connect()
+    }, delay)
   }
 
   private startHealthCheck() {
-    setInterval(
-      () => {
-        // If we've been disconnected for more than 2 minutes, reset attempts
-        if (!this.isConnected && this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.log("[v0] Health check: Resetting SSE connection attempts")
-          this.reconnectAttempts = 0
-          this.connect()
-        }
-      },
-      2 * 60 * 1000,
-    ) // Check every 2 minutes
+    this.healthCheckTimer = setInterval(() => {
+      if (!this.isConnected) {
+        console.log("[v0] Health check: Resetting SSE connection attempts")
+        this.reconnectAttempts = 0
+        this.connect()
+      }
+    }, 60 * 1000) // Check every minute
   }
 
   private handleCacheInvalidation(event: CacheInvalidationEvent) {
@@ -121,7 +123,7 @@ export class CacheInvalidationManager {
         console.log("[v0] Connected to cache invalidation stream")
         break
       case "HEARTBEAT":
-        // Keep connection alive
+        // Keep connection alive - no action needed
         break
     }
   }
@@ -130,6 +132,8 @@ export class CacheInvalidationManager {
     if (!this.trpcUtils) return
 
     try {
+      console.log("[v0] Invalidating cache sections:", sections, "tickers:", tickers)
+
       // Invalidate dashboard sections
       if (sections.includes("all") || sections.includes("watchlist")) {
         this.trpcUtils.getWatchlist.invalidate()
@@ -155,10 +159,10 @@ export class CacheInvalidationManager {
         console.log("[v0] Invalidated all tRPC caches")
       }
 
-      // Trigger a page refresh for server-side cached data
       if (sections.includes("all") || sections.includes("dashboard")) {
-        // Force refresh of server-side dashboard data
-        window.location.reload()
+        // Invalidate all dashboard-related queries
+        this.trpcUtils.getDashboardSections?.invalidate()
+        console.log("[v0] Invalidated dashboard sections cache")
       }
     } catch (error) {
       console.error("[v0] Error during cache invalidation:", error)
@@ -171,8 +175,6 @@ export class CacheInvalidationManager {
       this.trpcUtils.invalidate()
       console.log("[v0] Manually invalidated all caches")
     }
-    // Also refresh the page to get fresh server-side data
-    window.location.reload()
   }
 
   invalidateWatchlist() {
@@ -197,16 +199,25 @@ export class CacheInvalidationManager {
   }
 
   disconnect() {
+    console.log("[v0] Disconnecting cache invalidation manager")
+
     if (this.eventSource) {
       this.eventSource.close()
       this.eventSource = null
       this.isConnected = false
-      console.log("[v0] Disconnected from cache invalidation SSE")
     }
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer)
+      this.healthCheckTimer = null
+    }
+
+    console.log("[v0] Disconnected from cache invalidation SSE")
   }
 }
 
