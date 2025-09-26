@@ -86,30 +86,44 @@ export async function fetchTickers({
   limit = 50,
   offset = 0,
   sort = "symbol.asc",
-}: FetchTickersParams = {}): Promise<TickerData[]> {
+}: FetchTickersParams = {}): Promise<{ data: TickerData[]; totalCount: number }> {
   try {
     const fetcher = await createSupabaseFetcher()
 
-    // Build the query parameters
+    // Parse sort parameter
+    const [sortColumn, sortDirection] = sort.split(".")
+
+    // Build RPC call parameters
     const params = new URLSearchParams({
-      select:
-        "symbol,name,sector,close,pct_change_1d,volume,turnover,vwap,vwap_gap_pct,intraday_volatility,biggest_order_shares,biggest_order_value,trading_date",
-      order: sort,
-      limit: limit.toString(),
-      offset: offset.toString(),
+      search_query: q || "",
+      sort_column: sortColumn || "symbol",
+      sort_direction: sortDirection || "asc",
+      page_limit: limit.toString(),
+      page_offset: offset.toString(),
     })
 
-    // Add search filter if provided
-    if (q && q.trim()) {
-      params.append("or", `symbol.ilike.${q}%,name.ilike.%${q}%`)
-    }
+    const endpoint = `rpc/get_ticker_dashboard_stocks?${params.toString()}`
+    const result = await fetcher.fetch(endpoint)
 
-    const endpoint = `mv_ticker_dashboard_stocks?${params.toString()}`
-    return await fetcher.fetch(endpoint)
+    // Extract total count from first row (all rows have same total_count)
+    const totalCount = result.length > 0 ? result[0].total_count : 0
+
+    // Remove total_count from data rows
+    const data = result.map(({ total_count, ...row }: any) => row)
+
+    console.log("[v0] Fetched tickers via RPC:", {
+      count: data.length,
+      totalCount,
+      searchQuery: q,
+      sort: `${sortColumn}.${sortDirection}`,
+    })
+
+    return { data, totalCount }
   } catch (error) {
-    console.error("Error fetching tickers:", error)
+    console.error("Error fetching tickers via RPC:", error)
     // Return mock data for development/testing
-    return getMockTickers()
+    const mockData = getMockTickers()
+    return { data: mockData, totalCount: mockData.length }
   }
 }
 

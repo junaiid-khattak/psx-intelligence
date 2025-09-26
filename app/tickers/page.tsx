@@ -49,16 +49,22 @@ export default function TickersPage() {
       const offset = (currentPage - 1) * ITEMS_PER_PAGE
       const sort = `${sortConfig.field}.${sortConfig.direction}`
 
-      const data = await fetchTickers({
+      const result = await fetchTickers({
         q: searchQuery,
         limit: ITEMS_PER_PAGE,
         offset,
         sort,
       })
 
-      setTickers(data)
-      // For demo purposes, estimate total count
-      setTotalCount(searchQuery ? data.length : 500)
+      setTickers(result.data)
+      setTotalCount(result.totalCount)
+
+      console.log("[v0] Loaded tickers:", {
+        count: result.data.length,
+        totalCount: result.totalCount,
+        page: currentPage,
+        searchQuery,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tickers")
     } finally {
