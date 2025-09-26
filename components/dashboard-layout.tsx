@@ -48,8 +48,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       setUser(user)
 
-      // Fetch user data
-      const { data: userData } = await supabase.from("psx.users").select("*").eq("id", user.id).single()
+      // Fetch user data from psx schema
+      const { data: userData } = await supabase.schema("psx").from("users").select("*").eq("id", user.id).single()
 
       setUserData(userData)
       setLoading(false)
