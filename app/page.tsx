@@ -1,9 +1,30 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
 import { TrendingUp, BarChart3, Zap, Shield, Search, Database } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function LandingPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      setIsLoggedIn(!!user)
+      setIsLoading(false)
+    }
+
+    checkAuth()
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -17,12 +38,21 @@ export default function LandingPage() {
             <Link href="/tickers" className="text-muted-foreground hover:text-foreground">
               Browse Tickers
             </Link>
-            <Link href="/auth/signin" className="text-muted-foreground hover:text-foreground">
-              Sign In
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline">Sign Up</Button>
-            </Link>
+            {!isLoading && !isLoggedIn && (
+              <>
+                <Link href="/auth/signin" className="text-muted-foreground hover:text-foreground">
+                  Sign In
+                </Link>
+                <Link href="/auth/signup">
+                  <Button variant="outline">Sign Up</Button>
+                </Link>
+              </>
+            )}
+            {!isLoading && isLoggedIn && (
+              <Link href="/dashboard">
+                <Button>Dashboard</Button>
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -169,11 +199,20 @@ export default function LandingPage() {
             Join professional traders who rely on PSX Intelligence for market analysis and trading decisions
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
-              <Button size="lg" className="px-8">
-                Create Free Account
-              </Button>
-            </Link>
+            {!isLoading && !isLoggedIn && (
+              <Link href="/auth/signup">
+                <Button size="lg" className="px-8">
+                  Create Free Account
+                </Button>
+              </Link>
+            )}
+            {!isLoading && isLoggedIn && (
+              <Link href="/dashboard">
+                <Button size="lg" className="px-8">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            )}
             <Link href="/tickers">
               <Button variant="outline" size="lg" className="px-8 bg-transparent">
                 Explore Market Data
@@ -198,9 +237,11 @@ export default function LandingPage() {
               <Link href="/tickers" className="hover:text-foreground">
                 Tickers
               </Link>
-              <Link href="/auth/signin" className="hover:text-foreground">
-                Sign In
-              </Link>
+              {!isLoading && !isLoggedIn && (
+                <Link href="/auth/signin" className="hover:text-foreground">
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
           <div className="text-center text-muted-foreground text-sm mt-4">

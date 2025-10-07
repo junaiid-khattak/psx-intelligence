@@ -1,8 +1,30 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { SignUpForm } from "../../../components/auth/signup-form"
 import { TrendingUp } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function SignUpPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        router.push("/dashboard")
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left side - Branding */}
