@@ -54,9 +54,14 @@ async function DashboardContent() {
                 symbol={ticker.symbol}
                 close={ticker.close}
                 primary={{
+                  value: ticker.volume,
+                  kind: "vol",
+                  label: "Volume",
+                }}
+                secondary={{
                   value: ticker.pct_change_1d,
                   kind: "pct",
-                  label: "1D Change",
+                  label: "1D %",
                 }}
                 hint={ticker.name}
               />
