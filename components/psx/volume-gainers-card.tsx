@@ -5,10 +5,10 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MetricRow } from "./metric-row"
-import { Volume2, Loader2 } from "lucide-react"
+import { Volume2, Loader2, TrendingUp } from "lucide-react"
 import type { TickerData } from "@/lib/psx"
 import { fetchVolumeGainers1D } from "@/lib/psx"
+import { cn } from "@/lib/utils"
 
 interface VolumeGainersCardProps {
   data: TickerData[]
@@ -39,7 +39,7 @@ export function VolumeGainersCard({ data }: VolumeGainersCardProps) {
 
   const sortedData =
     period === "1d"
-      ? displayData // Already sorted from view
+      ? displayData
       : period === "rvol"
         ? [...data].filter((t) => t.rvol_3d != null).sort((a, b) => (b.rvol_3d || 0) - (a.rvol_3d || 0))
         : [...displayData].sort((a, b) => {
@@ -51,19 +51,21 @@ export function VolumeGainersCard({ data }: VolumeGainersCardProps) {
           })
 
   const getVolumeChange = (ticker: TickerData) => {
-    if (period === "1d") {
-      return ticker.pct_volume_change_1d || 0
-    } else if (period === "2d") {
-      return ticker.pct_volume_change_2d || 0
-    } else {
-      return ticker.pct_volume_change_3d || 0
-    }
+    if (period === "1d") return ticker.pct_volume_change_1d || 0
+    if (period === "2d") return ticker.pct_volume_change_2d || 0
+    return ticker.pct_volume_change_3d || 0
   }
 
   const getPrevVolume = (ticker: TickerData) => {
     if (period === "1d") return ticker.volume_prev_1d
     if (period === "2d") return ticker.volume_prev_2d
     return ticker.volume_prev_3d
+  }
+
+  const formatVolume = (vol: number) => {
+    if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`
+    if (vol >= 1_000) return `${(vol / 1_000).toFixed(1)}K`
+    return vol.toLocaleString()
   }
 
   return (
@@ -97,68 +99,70 @@ export function VolumeGainersCard({ data }: VolumeGainersCardProps) {
             : "Highest volume % change"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-1">
+      <CardContent>
         {loading1D && period === "1d" ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : sortedData.length === 0 ? (
           <div className="text-center py-8 text-sm text-muted-foreground">No data available</div>
-        ) : period === "rvol" ? (
-          <>
+        ) : (
+          <div className="space-y-0.5">
             {sortedData.slice(0, 5).map((ticker, index) => {
-              const tooltip = `Prev 3-day avg: ${((ticker.volume || 0) / (ticker.rvol_3d || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+              const volumeChange = getVolumeChange(ticker)
+              const prevVolume = getPrevVolume(ticker)
+              const tooltip = prevVolume
+                ? `Prev vol: ${formatVolume(prevVolume)}`
+                : period === "rvol"
+                  ? `3-day avg: ${formatVolume((ticker.volume || 0) / (ticker.rvol_3d || 1))}`
+                  : ticker.name
 
               return (
                 <Link key={ticker.symbol} href={`/ticker/${ticker.symbol}`}>
-                  <div className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent transition-colors">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="text-xs font-medium text-muted-foreground w-4">{index + 1}</span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-medium text-sm truncate">{ticker.symbol}</span>
-                        <span className="text-xs text-muted-foreground">
-                          Vol: {(ticker.volume || 0).toLocaleString()}
+                  <div
+                    className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center px-3 py-2.5 rounded-md hover:bg-accent transition-colors group"
+                    title={tooltip}
+                  >
+                    {/* Rank */}
+                    <span className="text-xs font-medium text-muted-foreground w-4 text-right">{index + 1}</span>
+
+                    {/* Symbol */}
+                    <span className="font-mono font-semibold text-sm truncate">{ticker.symbol}</span>
+
+                    {/* % Change or RVOL - Primary metric */}
+                    {period === "rvol" ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-base font-bold text-blue-600 tabular-nums">
+                          {(ticker.rvol_3d || 0).toFixed(2)}×
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-blue-600" title={tooltip}>
-                        {(ticker.rvol_3d || 0).toFixed(2)}×
-                      </span>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3 text-green-600" />
+                        <span
+                          className={cn(
+                            "text-base font-bold tabular-nums",
+                            volumeChange >= 0 ? "text-green-600" : "text-red-600",
+                          )}
+                        >
+                          {volumeChange >= 0 ? "+" : ""}
+                          {volumeChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Volume - Secondary metric */}
+                    <span className="text-xs text-muted-foreground tabular-nums text-right min-w-[60px]">
+                      {formatVolume(ticker.volume || 0)}
+                    </span>
                   </div>
                 </Link>
               )
             })}
-          </>
-        ) : (
-          sortedData.slice(0, 5).map((ticker) => {
-            const volumeChange = getVolumeChange(ticker)
-            const prevVolume = getPrevVolume(ticker)
-            const tooltip = prevVolume ? `Prev vol: ${prevVolume.toLocaleString()}` : ticker.name
-
-            return (
-              <Link key={ticker.symbol} href={`/ticker/${ticker.symbol}`}>
-                <MetricRow
-                  symbol={ticker.symbol}
-                  close={ticker.close}
-                  primary={{
-                    value: volumeChange,
-                    kind: "pct",
-                    label: "% Change",
-                  }}
-                  secondary={{
-                    value: ticker.volume,
-                    kind: "vol",
-                    label: "Volume",
-                  }}
-                  hint={tooltip}
-                />
-              </Link>
-            )
-          })
+          </div>
         )}
-        <div className="pt-2">
+
+        <div className="pt-3 mt-2 border-t">
           <Link href="/tickers?sort=volume.desc">
             <Button variant="ghost" size="sm" className="w-full text-xs">
               See all volume →
