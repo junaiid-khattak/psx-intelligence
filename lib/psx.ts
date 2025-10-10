@@ -27,6 +27,7 @@ interface TickerData {
   volume_prev_3d: number
   pct_volume_change_2d: number
   pct_volume_change_3d: number
+  pct_volume_change_1d?: number
 }
 
 interface FetchTickersParams {
@@ -45,6 +46,7 @@ interface DashboardSections {
   vwapDiscounts: TickerData[]
   volatilityLeaders: TickerData[]
   volumeGainers: TickerData[]
+  volumeGainers1D: TickerData[]
 }
 
 // Create a reusable fetcher with proper headers
@@ -218,6 +220,7 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapDiscounts,
       volatilityLeaders,
       volumeGainers,
+      volumeGainers1D,
     ] = await Promise.all([
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
@@ -227,6 +230,9 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_volume_change_2d.desc.nullslast&limit=10`),
+      fetcher.fetch(
+        `v_top_pct_volume_gainers_1d?select=${baseSelect}&order=pct_volume_change_1d.desc.nullslast&limit=10`,
+      ),
     ])
 
     console.log("[v0] Dashboard sections fetched successfully")
@@ -240,10 +246,31 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapDiscounts,
       volatilityLeaders,
       volumeGainers,
+      volumeGainers1D,
     }
   } catch (error) {
     console.error("[v0] Error fetching dashboard sections:", error)
     throw new Error(`Failed to fetch dashboard sections: ${error instanceof Error ? error.message : "Unknown error"}`)
+  }
+}
+
+export async function fetchVolumeGainers1D(): Promise<TickerData[]> {
+  try {
+    const fetcher = await createSupabaseFetcher()
+
+    const baseSelect =
+      "symbol,name,sector,close,pct_change_1d,volume,volume_prev_1d,pct_volume_change_1d,turnover,vwap,vwap_gap_pct,intraday_volatility,biggest_order_shares,biggest_order_value,trading_date"
+
+    const data = await fetcher.fetch(
+      `v_top_pct_volume_gainers_1d?select=${baseSelect}&order=pct_volume_change_1d.desc.nullslast&limit=10`,
+    )
+
+    console.log("[v0] Fetched 1D volume gainers from dedicated view")
+
+    return data
+  } catch (error) {
+    console.error("[v0] Error fetching 1D volume gainers:", error)
+    throw new Error(`Failed to fetch 1D volume gainers: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
@@ -346,6 +373,7 @@ function getMockDashboardSections(): DashboardSections {
     vwapDiscounts: mockData,
     volatilityLeaders: mockData,
     volumeGainers: mockData,
+    volumeGainers1D: mockData,
   }
 }
 
