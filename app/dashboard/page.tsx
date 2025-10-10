@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { MetricRow } from "@/components/psx/metric-row"
 import { CardSkeleton } from "@/components/psx/loading-skeleton"
+import { VolumeGainersCard } from "@/components/psx/volume-gainers-card"
 import { fetchDashboardSections } from "@/lib/psx"
 import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
 import { CacheStatusIndicator } from "@/components/cache-status-indicator"
@@ -75,6 +76,9 @@ async function DashboardContent() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Volume % Gainers */}
+        <VolumeGainersCard data={sections.volumeGainers} />
 
         {/* Most Active Volume */}
         <Card>

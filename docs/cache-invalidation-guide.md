@@ -17,9 +17,19 @@ The PSX Intelligence application implements a comprehensive cache invalidation s
 - Sends heartbeat messages to keep connection alive
 
 ### 3. Client-Side Cache Management
-- `CacheInvalidationManager` class handles SSE connections
-- Automatic query invalidation based on received events
+- `CacheStatusIndicator` component handles SSE connections
+- Automatic page reload on cache invalidation events
 - Manual refresh controls throughout the UI
+
+## Data Source
+
+**Current View**: `public.mv_ticker_dashboard`
+
+All frontend queries use the `mv_ticker_dashboard` materialized view which includes:
+- OHLC prices, volume, turnover
+- VWAP and volatility metrics
+- Volume change percentages (1D, 2D, 3D)
+- Block trade information
 
 ## Usage
 
@@ -30,8 +40,7 @@ curl -X POST https://your-app.vercel.app/api/cache/invalidate \
   -H "Content-Type: application/json" \
   -d '{
     "apiKey": "your-secret-key",
-    "sections": ["watchlist", "dashboard"],
-    "tickers": ["OGDC", "UBL"]
+    "sections": ["dashboard"]
   }'
 \`\`\`
 
@@ -41,14 +50,12 @@ Different data types use optimized cache settings:
 
 - **Real-time data**: 30s stale time, 1min refetch interval
 - **Stock details**: 2min stale time, focus refetch
-- **Watchlist**: 1min stale time, 2min background refetch
-- **AI signals**: 10min stale time (expensive to generate)
+- **Dashboard sections**: Server-side rendering with `force-dynamic`
 
 ### Manual Refresh Controls
 
 Users can manually refresh data using:
 - Header cache status indicator
-- Individual component refresh buttons
 - Full page refresh for server-side data
 
 ## Environment Variables
@@ -62,5 +69,4 @@ CACHE_INVALIDATION_API_KEY=your-secret-key-here
 1. **Real-time Updates**: Data refreshes automatically when Lambda updates database
 2. **Performance**: Intelligent caching reduces API calls and improves UX
 3. **Reliability**: Automatic reconnection and fallback mechanisms
-4. **Flexibility**: Granular control over what data to invalidate
-5. **User Control**: Manual refresh options for immediate updates
+4. **User Control**: Manual refresh options for immediate updates

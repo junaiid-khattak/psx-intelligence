@@ -1,5 +1,5 @@
 // PSX Intelligence Server Data Layer
-// Handles all data fetching from Supabase materialized view psx.mv_ticker_dashboard_stocks
+// Handles all data fetching from Supabase materialized view public.mv_ticker_dashboard
 
 interface TickerData {
   symbol: string
@@ -22,6 +22,11 @@ interface TickerData {
   vwap_gap_pct: number
   biggest_order_shares: number
   biggest_order_value: number
+  volume_prev_1d: number
+  volume_prev_2d: number
+  volume_prev_3d: number
+  pct_volume_change_2d: number
+  pct_volume_change_3d: number
 }
 
 interface FetchTickersParams {
@@ -39,6 +44,7 @@ interface DashboardSections {
   vwapPremiums: TickerData[]
   vwapDiscounts: TickerData[]
   volatilityLeaders: TickerData[]
+  volumeGainers: TickerData[]
 }
 
 // Create a reusable fetcher with proper headers
@@ -122,6 +128,11 @@ export async function fetchTickers({
       "prev_close",
       "pct_change_1d",
       "volume",
+      "volume_prev_1d",
+      "volume_prev_2d",
+      "volume_prev_3d",
+      "pct_volume_change_2d",
+      "pct_volume_change_3d",
       "turnover",
       "vwap",
       "vwap_gap_pct",
@@ -135,7 +146,7 @@ export async function fetchTickers({
 
     params.append("select", selectColumns)
 
-    const endpoint = `mv_ticker_dashboard_stocks?${params.toString()}`
+    const endpoint = `mv_ticker_dashboard?${params.toString()}`
 
     let totalCount = 0
     try {
@@ -146,7 +157,7 @@ export async function fetchTickers({
       countParams.append("select", "count")
 
       const countResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/mv_ticker_dashboard_stocks?${countParams.toString()}`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/mv_ticker_dashboard?${countParams.toString()}`,
         {
           headers: {
             apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -195,7 +206,7 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
     const fetcher = await createSupabaseFetcher()
 
     const baseSelect =
-      "symbol,name,sector,close,pct_change_1d,volume,turnover,vwap,vwap_gap_pct,intraday_volatility,biggest_order_shares,biggest_order_value,trading_date"
+      "symbol,name,sector,close,pct_change_1d,volume,volume_prev_1d,volume_prev_2d,volume_prev_3d,pct_volume_change_2d,pct_volume_change_3d,turnover,vwap,vwap_gap_pct,intraday_volatility,biggest_order_shares,biggest_order_value,trading_date"
 
     // Fetch all sections in parallel
     const [
@@ -206,18 +217,16 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapPremiums,
       vwapDiscounts,
       volatilityLeaders,
+      volumeGainers,
     ] = await Promise.all([
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
-      fetcher.fetch(
-        `mv_ticker_dashboard_stocks?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`,
-      ),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
-      fetcher.fetch(
-        `mv_ticker_dashboard_stocks?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`,
-      ),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_volume_change_2d.desc.nullslast&limit=10`),
     ])
 
     console.log("[v0] Dashboard sections fetched successfully")
@@ -230,6 +239,7 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapPremiums,
       vwapDiscounts,
       volatilityLeaders,
+      volumeGainers,
     }
   } catch (error) {
     console.error("[v0] Error fetching dashboard sections:", error)
@@ -289,6 +299,11 @@ function getMockTickers(): TickerData[] {
       vwap_gap_pct: 0.64,
       biggest_order_shares: 50_000,
       biggest_order_value: 4_337_500,
+      volume_prev_1d: 2_300_000,
+      volume_prev_2d: 2_200_000,
+      volume_prev_3d: 2_100_000,
+      pct_volume_change_2d: 5.4,
+      pct_volume_change_3d: 6.7,
     },
     {
       symbol: "LUCK",
@@ -311,6 +326,11 @@ function getMockTickers(): TickerData[] {
       vwap_gap_pct: 1.09,
       biggest_order_shares: 25_000,
       biggest_order_value: 13_312_500,
+      volume_prev_1d: 800_000,
+      volume_prev_2d: 750_000,
+      volume_prev_3d: 700_000,
+      pct_volume_change_2d: 5.3,
+      pct_volume_change_3d: 6.0,
     },
   ]
 }
@@ -325,6 +345,7 @@ function getMockDashboardSections(): DashboardSections {
     vwapPremiums: mockData,
     vwapDiscounts: mockData,
     volatilityLeaders: mockData,
+    volumeGainers: mockData,
   }
 }
 
