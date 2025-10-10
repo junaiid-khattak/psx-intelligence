@@ -8,10 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { MetricRow } from "@/components/psx/metric-row"
 import { CardSkeleton } from "@/components/psx/loading-skeleton"
-import { VolumeGainersCard } from "@/components/psx/volume-gainers-card"
 import { fetchDashboardSections } from "@/lib/psx"
 import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
 import { CacheStatusIndicator } from "@/components/cache-status-indicator"
+import { TopGainersCard } from "@/components/psx/top-gainers-card"
 
 async function DashboardContent() {
   const sections = await fetchDashboardSections()
@@ -39,46 +39,7 @@ async function DashboardContent() {
 
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {/* Top Gainers */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <CardTitle className="text-base">Top Gainers</CardTitle>
-            </div>
-            <CardDescription>Highest 1-day % gains</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {sections.topGainers.slice(0, 5).map((ticker) => (
-              <MetricRow
-                key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
-                primary={{
-                  value: ticker.volume,
-                  kind: "vol",
-                  label: "Volume",
-                }}
-                secondary={{
-                  value: ticker.pct_change_1d,
-                  kind: "pct",
-                  label: "1D %",
-                }}
-                hint={ticker.name}
-              />
-            ))}
-            <div className="pt-2">
-              <Link href="/tickers?sort=pct_change_1d.desc">
-                <Button variant="ghost" size="sm" className="w-full text-xs">
-                  See all gainers →
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Volume % Gainers */}
-        <VolumeGainersCard data={sections.volumeGainers} />
+        <TopGainersCard data={sections.topGainers} />
 
         {/* Most Active Volume */}
         <Card>
