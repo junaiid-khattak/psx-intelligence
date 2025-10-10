@@ -120,12 +120,9 @@ export function VolumeGainersCard({ data }: VolumeGainersCardProps) {
               return (
                 <Link key={ticker.symbol} href={`/ticker/${ticker.symbol}`}>
                   <div
-                    className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center px-3 py-2.5 rounded-md hover:bg-accent transition-colors group"
+                    className="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2.5 rounded-md hover:bg-accent transition-colors group"
                     title={tooltip}
                   >
-                    {/* Rank */}
-                    <span className="text-xs font-medium text-muted-foreground w-4 text-right">{index + 1}</span>
-
                     {/* Symbol */}
                     <span className="font-mono font-semibold text-sm truncate">{ticker.symbol}</span>
 
