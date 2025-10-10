@@ -234,7 +234,7 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
       fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_volume_change_2d.desc.nullslast&limit=10`),
       fetcher.fetch(
-        `v_top_pct_volume_gainers_1d?select=${baseSelect}&order=pct_volume_change_1d.desc.nullslast&limit=10`,
+        `mv_ticker_dashboard?select=${baseSelect}&order=pct_volume_change_1d.desc.nullslast&limit=10`,
       ),
     ])
 
@@ -265,7 +265,7 @@ export async function fetchVolumeGainers1D(): Promise<TickerData[]> {
       "symbol,name,sector,close,pct_change_1d,volume,volume_prev_1d,pct_volume_change_1d,turnover,vwap,vwap_gap_pct,intraday_volatility,biggest_order_shares,biggest_order_value,trading_date,rvol_3d"
 
     const data = await fetcher.fetch(
-      `v_top_pct_volume_gainers_1d?select=${baseSelect}&order=pct_volume_change_1d.desc.nullslast&limit=10`,
+      `mv_ticker_dashboard?select=${baseSelect}&order=pct_volume_change_1d.desc.nullslast&limit=10`,
     )
 
     console.log("[v0] Fetched 1D volume gainers from dedicated view")
