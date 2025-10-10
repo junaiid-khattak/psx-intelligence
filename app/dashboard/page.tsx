@@ -12,6 +12,7 @@ import { fetchDashboardSections } from "@/lib/psx"
 import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
 import { CacheStatusIndicator } from "@/components/cache-status-indicator"
 import { TopGainersCard } from "@/components/psx/top-gainers-card"
+import { VolumeGainersCard } from "@/components/psx/volume-gainers-card"
 
 async function DashboardContent() {
   const sections = await fetchDashboardSections()
@@ -40,6 +41,8 @@ async function DashboardContent() {
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <TopGainersCard data={sections.topGainers} />
+
+        <VolumeGainersCard data={sections.topGainers} />
 
         {/* Most Active Volume */}
         <Card>
