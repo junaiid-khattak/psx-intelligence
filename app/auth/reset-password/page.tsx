@@ -20,17 +20,6 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    // Check if we have the necessary tokens from the URL
-    const accessToken = searchParams.get("access_token")
-    const refreshToken = searchParams.get("refresh_token")
-
-    if (!accessToken || !refreshToken) {
-      setError("Invalid reset link. Please request a new password reset.")
-    }
-  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
