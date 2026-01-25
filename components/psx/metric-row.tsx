@@ -1,6 +1,8 @@
 "use client"
 
 import { NumberBadge } from "./number-badge"
+import { Button } from "../ui/button"
+import { Info } from "lucide-react"
 
 interface MetricRowProps {
   symbol: string
@@ -17,9 +19,11 @@ interface MetricRowProps {
   }
   hint?: string
   onClick?: () => void
+  onExplain?: () => void
+  showExplain?: boolean
 }
 
-export function MetricRow({ symbol, close, primary, secondary, hint, onClick }: MetricRowProps) {
+export function MetricRow({ symbol, close, primary, secondary, hint, onClick, onExplain, showExplain }: MetricRowProps) {
   return (
     <div
       className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${
@@ -46,6 +50,21 @@ export function MetricRow({ symbol, close, primary, secondary, hint, onClick }: 
             <NumberBadge value={secondary.value} kind={secondary.kind} showIcon={false} />
             <div className="text-xs text-muted-foreground mt-0.5">{secondary.label}</div>
           </div>
+        )}
+
+        {showExplain && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 bg-transparent"
+            onClick={(e) => {
+              e.stopPropagation()
+              onExplain?.()
+            }}
+            aria-label={`Explain ${symbol}`}
+          >
+            <Info className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </div>

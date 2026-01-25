@@ -1,5 +1,5 @@
 // PSX Intelligence Server Data Layer
-// Handles all data fetching from Supabase materialized view public.mv_ticker_dashboard_stocks
+// Handles all data fetching from Supabase materialized view public.mv_ticker_dashboard
 
 interface TickerData {
   symbol: string
@@ -131,13 +131,13 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapDiscounts,
       volatilityLeaders,
     ] = await Promise.all([
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard_stocks?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
     ])
 
     return {

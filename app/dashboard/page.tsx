@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { DashboardLayout } from "../../components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,17 +10,49 @@ import { CardSkeleton } from "@/components/psx/loading-skeleton"
 import { fetchDashboardSections } from "@/lib/psx"
 import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
 import { CacheStatusIndicator } from "@/components/cache-status-indicator"
+import { AiMarketSummary } from "@/components/dashboard/AiMarketSummary"
+import { TickerExplainSheet } from "@/components/dashboard/TickerExplainSheet"
+import { buildSignalBrief } from "@/lib/utils"
 
-async function DashboardContent() {
-  const sections = await fetchDashboardSections()
+function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) => void }) {
+  const [sections, setSections] = useState<any | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Get the latest trading date from the first section
+  useEffect(() => {
+    fetchDashboardSections()
+      .then((data) => {
+        setSections(data)
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard")
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-48 bg-muted rounded animate-pulse mt-2" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !sections) {
+    return <div className="text-sm text-destructive">{error || "Failed to load dashboard"}</div>
+  }
+
   const tradingDate = sections.topGainers[0]?.trading_date
     ? new Date(sections.topGainers[0].trading_date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
     : "Today"
 
   return (
@@ -30,6 +64,8 @@ async function DashboardContent() {
         </div>
         <div className="text-sm text-muted-foreground">Trading Date: {tradingDate}</div>
       </div>
+
+      <AiMarketSummary signals={sections} />
 
       <CacheStatusIndicator showRefreshButton={true} compact={false} />
 
@@ -56,6 +92,8 @@ async function DashboardContent() {
                   label: "1D Change",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -94,6 +132,8 @@ async function DashboardContent() {
                   label: "1D %",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -132,6 +172,8 @@ async function DashboardContent() {
                   label: "1D %",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -170,6 +212,8 @@ async function DashboardContent() {
                   label: "Value",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -208,6 +252,8 @@ async function DashboardContent() {
                   label: "1D %",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -246,6 +292,8 @@ async function DashboardContent() {
                   label: "1D %",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -284,6 +332,8 @@ async function DashboardContent() {
                   label: "1D %",
                 }}
                 hint={ticker.name}
+                showExplain
+                onExplain={() => onExplain(ticker)}
               />
             ))}
             <div className="pt-2">
@@ -329,6 +379,16 @@ async function DashboardContent() {
 }
 
 export default function DashboardPage() {
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [activeTicker, setActiveTicker] = useState<any | null>(null)
+  const [activeMetrics, setActiveMetrics] = useState<any | null>(null)
+
+  const handleExplain = (ticker: any) => {
+    setActiveTicker(ticker)
+    setActiveMetrics(ticker)
+    setSheetOpen(true)
+  }
+
   return (
     <DashboardLayout>
       <Suspense
@@ -352,8 +412,9 @@ export default function DashboardPage() {
           </div>
         }
       >
-        <DashboardContent />
+        <DashboardContentWithExplain onExplain={handleExplain} />
       </Suspense>
+      <TickerExplainSheet open={sheetOpen} onOpenChange={setSheetOpen} ticker={activeTicker} metrics={activeMetrics} />
     </DashboardLayout>
   )
 }
