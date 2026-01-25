@@ -95,10 +95,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const userInitials = userData?.full_name
     ? userData.full_name
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
     : user.email?.charAt(0).toUpperCase() || "U"
 
   return (
@@ -111,8 +111,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0"
         )}
       >
         <div className="flex h-full flex-col">
@@ -175,7 +176,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        {/* <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="flex items-center gap-4 px-4 py-3">
             <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-4 w-4" />
@@ -186,7 +187,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               Market Status: <span className="text-green-600 font-medium">Open</span>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Page content */}
         <main className="p-6">{children}</main>
