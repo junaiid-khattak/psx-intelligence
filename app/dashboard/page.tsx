@@ -5,14 +5,13 @@ import Link from "next/link"
 import { DashboardLayout } from "../../components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MetricRow } from "@/components/psx/metric-row"
 import { CardSkeleton } from "@/components/psx/loading-skeleton"
 import { fetchDashboardSections } from "@/lib/psx"
 import { TrendingUp, Volume2, DollarSign, Package, ArrowUpDown, TrendingDown, Zap } from "lucide-react"
 import { CacheStatusIndicator } from "@/components/cache-status-indicator"
 import { AiMarketSummary } from "@/components/dashboard/AiMarketSummary"
 import { TickerExplainSheet } from "@/components/dashboard/TickerExplainSheet"
-import { buildSignalBrief } from "@/lib/utils"
+import { TickerRowV2 } from "@/components/psx/ticker-row-v2"
 
 function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) => void }) {
   const [sections, setSections] = useState<any | null>(null)
@@ -70,26 +69,30 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
       <CacheStatusIndicator showRefreshButton={true} compact={false} />
 
       {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
         {/* Top Gainers */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
               <CardTitle className="text-base">Top Gainers</CardTitle>
             </div>
             <CardDescription>Highest 1-day % gains</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.topGainers.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.pct_change_1d,
                   kind: "pct",
                   label: "1D Change",
+                }}
+                secondary={{
+                  value: ticker.volume,
+                  kind: "vol",
+                  label: "Vol",
                 }}
                 hint={ticker.name}
                 showExplain
@@ -108,19 +111,18 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
 
         {/* Most Active Volume */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <Volume2 className="h-4 w-4 text-blue-600" />
               <CardTitle className="text-base">Most Active</CardTitle>
             </div>
             <CardDescription>Highest trading volume</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.mostActiveVolume.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.volume,
                   kind: "vol",
@@ -148,19 +150,18 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
 
         {/* Highest Turnover */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-purple-600" />
               <CardTitle className="text-base">Highest Turnover</CardTitle>
             </div>
             <CardDescription>Largest trading value</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.highestTurnover.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.turnover,
                   kind: "value",
@@ -188,19 +189,18 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
 
         {/* Largest Block Trades */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-orange-600" />
               <CardTitle className="text-base">Largest Blocks</CardTitle>
             </div>
             <CardDescription>Biggest single orders</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.largestBlocks.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.biggest_order_shares,
                   kind: "vol",
@@ -228,19 +228,18 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
 
         {/* VWAP Premiums */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4 text-green-600" />
               <CardTitle className="text-base">VWAP Premiums</CardTitle>
             </div>
             <CardDescription>Trading above VWAP</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.vwapPremiums.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.vwap_gap_pct,
                   kind: "pct",
@@ -268,19 +267,18 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
 
         {/* VWAP Discounts */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-600" />
               <CardTitle className="text-base">VWAP Discounts</CardTitle>
             </div>
             <CardDescription>Trading below VWAP</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.vwapDiscounts.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.vwap_gap_pct,
                   kind: "pct",
@@ -308,19 +306,18 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
 
         {/* Volatility Leaders */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-4 pt-4">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-yellow-600" />
               <CardTitle className="text-base">Volatility Leaders</CardTitle>
             </div>
             <CardDescription>Highest intraday swings</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
             {sections.volatilityLeaders.slice(0, 5).map((ticker) => (
-              <MetricRow
+              <TickerRowV2
                 key={ticker.symbol}
-                symbol={ticker.symbol}
-                close={ticker.close}
+                ticker={ticker}
                 primary={{
                   value: ticker.intraday_volatility,
                   kind: "pct",
