@@ -3,13 +3,13 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { TrendingUp, Eye, EyeOff } from "lucide-react"
+import { TrendingUp, Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -17,20 +17,53 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isValidating, setIsValidating] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [isRecoverySession, setIsRecoverySession] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Check if we have the necessary tokens from the URL
-    const accessToken = searchParams.get("access_token")
-    const refreshToken = searchParams.get("refresh_token")
+    const supabase = createClient()
 
-    if (!accessToken || !refreshToken) {
-      setError("Invalid reset link. Please request a new password reset.")
+    // Listen for auth state changes - Supabase automatically parses the hash fragments
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // User clicked the recovery link and session is established
+        setIsRecoverySession(true)
+        setIsValidating(false)
+        setError(null)
+      } else if (event === "SIGNED_IN" && session) {
+        // Check if this is a recovery session by looking at the session type
+        setIsRecoverySession(true)
+        setIsValidating(false)
+        setError(null)
+      }
+    })
+
+    // Also check if there's already a valid session (in case onAuthStateChange already fired)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setIsRecoverySession(true)
+        setIsValidating(false)
+      } else {
+        // Give a moment for the hash to be processed
+        setTimeout(() => {
+          setIsValidating(false)
+          if (!isRecoverySession) {
+            setError("Invalid or expired reset link. Please request a new password reset.")
+          }
+        }, 2000)
+      }
     }
-  }, [searchParams])
+
+    checkSession()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,6 +102,26 @@ export default function ResetPasswordPage() {
     }
   }
 
+  // Show loading state while validating the recovery link
+  if (isValidating) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div className="flex items-center gap-2 justify-center">
+            <TrendingUp className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">PSX Intelligence</h1>
+          </div>
+
+          <div className="space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Validating reset link...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show success state after password update
   if (success) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-6">
@@ -84,6 +137,31 @@ export default function ResetPasswordPage() {
               Your password has been successfully updated. Redirecting to sign in...
             </p>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if invalid link
+  if (!isRecoverySession && error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div className="flex items-center gap-2 justify-center">
+            <TrendingUp className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">PSX Intelligence</h1>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                {error}
+              </div>
+              <Button onClick={() => router.push("/auth/signin")} className="w-full">
+                Back to Sign In
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
