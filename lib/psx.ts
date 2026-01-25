@@ -113,6 +113,12 @@ export async function fetchTickers({
   }
 }
 
+async function fetchLatestTradingDate(fetcher: { fetch: (endpoint: string) => Promise<any> }) {
+  const rows = await fetcher.fetch("mv_ticker_dashboard?select=trading_date&order=trading_date.desc&limit=1")
+  return rows?.[0]?.trading_date as string | undefined
+}
+
+
 // Dashboard sections with different sorting criteria
 export async function fetchDashboardSections(): Promise<DashboardSections> {
   try {
@@ -120,6 +126,10 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
 
     const baseSelect =
       "symbol,name,sector,close,pct_change_1d,volume,turnover,vwap,vwap_gap_pct,intraday_volatility,biggest_order_shares,biggest_order_value,trading_date"
+
+    const latestDate = await fetchLatestTradingDate(fetcher)
+    const dateFilter = latestDate ? `&trading_date=eq.${encodeURIComponent(latestDate)}` : ""
+
 
     // Fetch all sections in parallel
     const [
@@ -131,13 +141,13 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
       vwapDiscounts,
       volatilityLeaders,
     ] = await Promise.all([
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=volume.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=turnover.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10`),
-      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=pct_change_1d.desc.nullslast&limit=10${dateFilter}`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=volume.desc.nullslast&limit=10${dateFilter}`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=turnover.desc.nullslast&limit=10${dateFilter}`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=biggest_order_shares.desc.nullslast&limit=10${dateFilter}`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.desc.nullslast&limit=10${dateFilter}`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=vwap_gap_pct.asc.nullslast&limit=10${dateFilter}`),
+      fetcher.fetch(`mv_ticker_dashboard?select=${baseSelect}&order=intraday_volatility.desc.nullslast&limit=10${dateFilter}`),
     ])
 
     return {
