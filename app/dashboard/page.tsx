@@ -342,34 +342,6 @@ function DashboardContentWithExplain({ onExplain }: { onExplain: (ticker: any) =
             </div>
           </CardContent>
         </Card>
-
-        {/* Quick Actions Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Quick Actions</CardTitle>
-            <CardDescription>Navigate to key sections</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Link href="/tickers">
-              <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Browse All Tickers
-              </Button>
-            </Link>
-            <Link href="/dashboard/watchlist">
-              <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                <Volume2 className="h-4 w-4 mr-2" />
-                My Watchlist
-              </Button>
-            </Link>
-            <Link href="/dashboard/signals">
-              <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                <Zap className="h-4 w-4 mr-2" />
-                Trading Signals
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
