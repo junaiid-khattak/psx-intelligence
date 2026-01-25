@@ -1,5 +1,5 @@
 // PSX Intelligence Server Data Layer
-// Handles all data fetching from Supabase materialized view psx.mv_ticker_dashboard_stocks
+// Handles all data fetching from Supabase materialized view public.mv_ticker_dashboard_stocks
 
 interface TickerData {
   symbol: string
@@ -44,7 +44,7 @@ interface DashboardSections {
 // Create a reusable fetcher with proper headers
 async function createSupabaseFetcher() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !serviceKey) {
     console.error("Missing Supabase environment variables:", {
@@ -104,7 +104,7 @@ export async function fetchTickers({
       params.append("or", `symbol.ilike.${q}%,name.ilike.%${q}%`)
     }
 
-    const endpoint = `mv_ticker_dashboard_stocks?${params.toString()}`
+    const endpoint = `mv_ticker_dashboard?${params.toString()}`
     return await fetcher.fetch(endpoint)
   } catch (error) {
     console.error("Error fetching tickers:", error)
@@ -151,7 +151,15 @@ export async function fetchDashboardSections(): Promise<DashboardSections> {
     }
   } catch (error) {
     // Return mock data for development/testing
-    return getMockDashboardSections()
+    return {
+      topGainers: [],
+      mostActiveVolume: [],
+      highestTurnover: [],
+      largestBlocks: [],
+      vwapPremiums: [],
+      vwapDiscounts: [],
+      volatilityLeaders: []
+    }
   }
 }
 
@@ -231,19 +239,6 @@ function getMockTickers(): TickerData[] {
       biggest_order_value: 13_312_500,
     },
   ]
-}
-
-function getMockDashboardSections(): DashboardSections {
-  const mockData = getMockTickers()
-  return {
-    topGainers: mockData,
-    mostActiveVolume: mockData,
-    highestTurnover: mockData,
-    largestBlocks: mockData,
-    vwapPremiums: mockData,
-    vwapDiscounts: mockData,
-    volatilityLeaders: mockData,
-  }
 }
 
 export type { TickerData, DashboardSections, FetchTickersParams }
